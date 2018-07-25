@@ -10,6 +10,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+type dialer interface {
+	DialContext(ctx context.Context, network, address string) (net.Conn, error)
+}
+
 type server struct {
 	mu sync.Mutex
 
@@ -23,7 +27,7 @@ type server struct {
 	reqDuration time.Duration
 	lastUsage   time.Time
 
-	dialer net.Dialer
+	dialer dialer
 
 	bOff        backoff.BackOff
 	nextBackoff time.Time
@@ -32,23 +36,19 @@ type server struct {
 	clock Clock
 }
 
-func newServer(network, addr string, cfg Config) *server {
+func newServer(network, addr string, cfg Config, dialer dialer) *server {
 	bc := backoff.NewExponentialBackOff()
 	bc.InitialInterval = cfg.InitialBackoffInterval
 	bc.MaxInterval = cfg.MaxBackoffInterval
 	bc.MaxElapsedTime = 0
+	bc.Clock = cfg.Clock
 
 	return &server{
-		network: network,
-		addr:    addr,
-
+		network:  network,
+		addr:     addr,
 		maxConns: cfg.MaxConnsPerServer,
-
-		dialer: net.Dialer{
-			Timeout: cfg.ConnectTimeout,
-		},
-
-		bOff: bc,
+		dialer:   dialer,
+		bOff:     bc,
 
 		reqDuration: time.Duration(1000.0/float64(cfg.MaxRPS)) * time.Millisecond,
 
@@ -74,10 +74,10 @@ func (s *server) getConnection(ctx context.Context) (Conn, error) {
 	}
 
 	if s.openedConns.size() > 0 {
-		return s.openedConns.pop().(Conn), nil
+		return s.wrapServerConn(s.openedConns.pop().(net.Conn)), nil
 	}
 
-	if s.nOpenedConns > s.maxConns {
+	if s.nOpenedConns >= s.maxConns {
 		return nil, errors.Wrap(errRatelimited, "too many opened connections")
 	}
 
@@ -98,7 +98,6 @@ func (s *server) getConnection(ctx context.Context) (Conn, error) {
 			"can't establish %s connection to %s: %s", s.network, s.addr, err)
 	}
 
-	s.openedConns.push(cn)
 	s.nOpenedConns++
 
 	if s.down {

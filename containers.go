@@ -32,6 +32,10 @@ func (rr *roundRobin) push(x interface{}) {
 }
 
 func (rr *roundRobin) next() interface{} {
+	if len(rr.data) == 0 {
+		panic("empty container")
+	}
+
 	x := rr.data[rr.idx]
 
 	rr.idx++

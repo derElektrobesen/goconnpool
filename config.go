@@ -9,7 +9,7 @@ const (
 	defMaxBackoffInterval  = 30 * time.Second
 )
 
-// Config holds some fiels required during new connection establishing.
+// Config holds some fields required during new connection establishing.
 type Config struct {
 	// MaxConnsPerServer declares maximum number of opened connections per one registered server.
 	// Default value is defMaxConnsPerServer.

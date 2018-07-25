@@ -1,7 +1,7 @@
 // Package goconnpool implements a fault tolerant connections pool with ratelimits.
 //
 // Connection returned by the pool is protocol-independent.
-
+//
 package goconnpool
 
 import (

@@ -7,3 +7,6 @@ fmt:
 		-exec bash -c 'goimports -w {}' \;
 
 test:
+
+lint:
+	golangci-lint run

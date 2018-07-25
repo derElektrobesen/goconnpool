@@ -3,6 +3,7 @@ package goconnpool
 import (
 	"context"
 	"fmt"
+	"net"
 
 	"github.com/pkg/errors"
 )
@@ -42,5 +43,7 @@ func (p *connPool) OpenConn(ctx context.Context) (Conn, error) {
 }
 
 func (p *connPool) RegisterServer(network string, addr string) {
-	p.servers.push(newServer(network, addr, p.cfg))
+	p.servers.push(newServer(network, addr, p.cfg, &net.Dialer{
+		Timeout: p.cfg.ConnectTimeout,
+	}))
 }

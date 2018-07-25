@@ -4,7 +4,12 @@ go:
   - 1.9.x
   - 1.10.x
 
-script: make test
+before_install:
+  - go get github.com/mattn/goveralls
+
+script:
+  - make test
+  - $HOME/gopath/bin/goveralls -v -service=travis-ci
 
 after_success:
   - test -n "$TRAVIS_TAG" && docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"

@@ -122,14 +122,12 @@ func (s *server) wrapServerConn(cn net.Conn) Conn {
 }
 
 func (cn *serverConn) Close() error {
-	err := cn.Conn.Close()
-
 	cn.s.mu.Lock()
 	defer cn.s.mu.Unlock()
 
-	if err != nil || cn.unusable {
+	if cn.unusable {
 		cn.s.nOpenedConns--
-		return errors.WithStack(err)
+		return errors.WithStack(cn.Conn.Close())
 	}
 
 	cn.s.openedConns.push(cn.Conn)

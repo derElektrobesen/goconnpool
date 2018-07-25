@@ -13,12 +13,12 @@ type connPool struct {
 	servers roundRobin
 }
 
-func newConnPool(cfg Config) (*connPool, error) {
+func newConnPool(cfg Config) *connPool {
 	cfg = cfg.withDefaults()
 
 	return &connPool{
 		cfg: cfg,
-	}, nil
+	}
 }
 
 func (p *connPool) OpenConn(ctx context.Context) (Conn, error) {

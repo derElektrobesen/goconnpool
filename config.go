@@ -9,18 +9,18 @@ const (
 	defMaxBackoffInterval  = 30 * time.Second
 )
 
-// Config holds some fiels required during new connection pool configuration.
+// Config holds some fiels required during new connection establishing.
 type Config struct {
 	// MaxConnsPerServer declares maximum number of opened connections per one registered server.
-	// Default value is `defMaxConnsPerServer`.
+	// Default value is defMaxConnsPerServer.
 	MaxConnsPerServer int
 
 	// MaxRPS declares muximum number of requests which could be sent into one server (XXX: not connection)
 	// per second.
-	// Frankly this value regulates only a number of `OpenConn` calls: goconnpool can't regulate number of real
+	// Frankly this value regulates only a number of OpenConn calls: goconnpool can't regulate number of real
 	// network requests.
 	//
-	// Default is `defMaxRPS`.
+	// Default is defMaxRPS.
 	MaxRPS int
 
 	// ConnectTimeout is the maximum amount of time a dial will wait for
@@ -30,14 +30,16 @@ type Config struct {
 	// See https://golang.org/pkg/net/#Dialer for more info
 	ConnectTimeout time.Duration
 
-	// Backoff configuration is used for exponential backoff mechanism.
+	// InitialBackoffInterval configures InitialInterval for ExponentialBackOff algorithm.
 	// See https://godoc.org/github.com/cenkalti/backoff#ExponentialBackOff for more info
-
 	InitialBackoffInterval time.Duration
-	MaxBackoffInterval     time.Duration
+
+	// MaxBackoffInterval configures MaxInterval for ExponentialBackOff algorithm.
+	// See https://godoc.org/github.com/cenkalti/backoff#ExponentialBackOff for more info
+	MaxBackoffInterval time.Duration
 
 	// Clock could be used to reimplement behaviour of system clock.
-	// `SystemClock` by default.
+	// SystemClock by default.
 	Clock Clock
 
 	// Logger could be used to view some messages, printed by the library.
@@ -46,15 +48,15 @@ type Config struct {
 }
 
 // FlagsParser is needed to embed goconnpool into production application.
-// For example `flag.FlagSet` could be used here (https://golang.org/pkg/flag/#FlagSet) or you could implement
+// For example flag.FlagSet could be used here (https://golang.org/pkg/flag/#FlagSet) or you could implement
 // your own config parser.
 type FlagsParser interface {
 	IntVar(dst *int, name string, def int, descr string)
 	DurationVar(p *time.Duration, name string, value time.Duration, usage string)
 }
 
-// NewConfig initializes configuration using `FlagsParser`.
-// If you use `flag.FlagSet`-based parsers, config will be filled only after `Parse()` method invoked.
+// NewConfig initializes configuration using FlagsParser.
+// If you use flag.FlagSet-based parsers, config will be filled only after Parse() method invoked.
 func NewConfig(p FlagsParser) *Config {
 	var c Config
 

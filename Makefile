@@ -7,10 +7,11 @@ fmt:
 		-exec bash -c 'goimports -w {}' \;
 
 test:
-	go test -v ./...
+	go test -race -v ./...
 
 gen:
 	mockgen -source=server.go -package=goconnpool dialer > server_mock_test.go
+	mockgen -source=server_test.go -package=goconnpool closer > closer_mock_test.go
 	mockgen -source=clock.go -package=goconnpool Clock > clock_mock_test.go
 
 lint:

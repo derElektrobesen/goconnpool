@@ -16,6 +16,7 @@ run:
   tests: true
 
   skip-files:
+    - ".*_mock_test.go"
     - ".*_example_test.go"
 
 # output configuration options

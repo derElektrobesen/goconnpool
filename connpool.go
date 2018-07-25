@@ -1,3 +1,7 @@
+// Package goconnpool implements a fault tolerant connections pool with ratelimits.
+//
+// Connection returned by the pool is protocol-independent.
+
 package goconnpool
 
 import (
@@ -16,7 +20,8 @@ type Conn interface {
 	net.Conn
 
 	// MarkUnusable marks connection not usable any more:
-	// connection will not be closed when Close() method will be invoked
+	// connection will not be closed when Close() method will be invoked.
+	// Otherwise connection will be returned into connections pool Close function this call.
 	MarkUnusable()
 }
 
@@ -31,9 +36,9 @@ type ConnPool interface {
 	// which could be used to send any type of request.
 	//
 	// Connection should be closed after usage. This action will return connection into pool.
-	// If you understand the connection should be completely closed, call `conn.MarkUnusable` first.
+	// If you understand the connection should be completely closed, call conn.MarkUnusable first.
 	//
-	// Pool regulates number of requests per server using `MaxRPS` config variable.
+	// Pool regulates number of requests per server using MaxRPS config variable.
 	// To prevent breaking this mechanism down, don't try to send multiple number of requests
 	// into one connection: close previous connection and take one more connection again.
 	//
@@ -42,7 +47,7 @@ type ConnPool interface {
 	OpenConn(ctx context.Context) (Conn, error)
 
 	// RegisterServer registers new server in connections pool.
-	// This server stands into round-robin queue to be used during `OpenCall` conn.
+	// This server stands into round-robin queue to be used during OpenCall conn.
 	//
 	// This operation is a part of initialization.
 	// Don't try to call it in runtime: not thread safe.
@@ -50,6 +55,6 @@ type ConnPool interface {
 }
 
 // NewConnPool creates new pool with configuration passed.
-func NewConnPool(cfg Config) (ConnPool, error) {
+func NewConnPool(cfg Config) ConnPool {
 	return newConnPool(cfg)
 }

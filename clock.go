@@ -9,7 +9,7 @@ type Clock interface {
 }
 
 // SystemClock is the default clock implementation for the package.
-// This type of clock just proxies calls to the `time` package.
+// This type of clock just proxies calls to the time package.
 type SystemClock struct{}
 
 func (SystemClock) Now() time.Time {

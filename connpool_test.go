@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func ExampleNewConnPool() {
+func ExampleNewConnPool_base() {
 	cfg := NewConfig(&flag.FlagSet{})
 	flag.Parse() // XXX: This call is required to fill config variables
 
@@ -39,7 +39,7 @@ func ExampleNewConnPool() {
 	}
 }
 
-func ExampleNewConnPool_http_request() {
+func ExampleNewConnPool_httpRequest() {
 	cfg := NewConfig(&flag.FlagSet{})
 	flag.Parse() // XXX: This call is required to fill config variables
 

@@ -1,16 +1,22 @@
 package goconnpool
 
 import (
+	"bufio"
 	"context"
 	"flag"
+	"fmt"
+	"net/http"
 	"time"
 )
 
 func ExampleNewConnPool() {
 	cfg := NewConfig(&flag.FlagSet{})
-	flag.Parse()
+	flag.Parse() // XXX: This call is required to fill config variables
 
+	// Create a pool
 	pool := NewConnPool(*cfg)
+
+	// Register some servers
 	pool.RegisterServer("tcp", "127.0.0.1:1234")
 	pool.RegisterServer("tcp", "8.8.8.8:1234")
 
@@ -28,6 +34,29 @@ func ExampleNewConnPool() {
 			cn.MarkUnusable()
 		}
 
+		// This call moves a connection back to pool or closes the connection when MarkUnusable was called.
 		cn.Close()
 	}
+}
+
+func ExampleNewConnPool_http_request() {
+	cfg := NewConfig(&flag.FlagSet{})
+	flag.Parse() // XXX: This call is required to fill config variables
+
+	// Create a pool
+	pool := NewConnPool(*cfg)
+
+	// Register some servers
+	pool.RegisterServer("tcp", "127.0.0.1:1234")
+
+	cn, _ := pool.OpenConn(context.Background())
+	defer cn.Close()
+
+	// You could implement your own transport in the same way:
+	// https://golang.org/pkg/net/http/#RoundTripper
+	req, _ := http.NewRequest(http.MethodGet, "/some", nil)
+	req.Write(cn)
+	resp, _ := http.ReadResponse(bufio.NewReader(cn), req)
+
+	fmt.Println(resp.ContentLength)
 }

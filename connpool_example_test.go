@@ -17,8 +17,8 @@ func ExampleNewConnPool_base() {
 	pool := NewConnPool(*cfg)
 
 	// Register some servers
-	pool.RegisterServer("tcp", "127.0.0.1:1234")
-	pool.RegisterServer("tcp", "8.8.8.8:1234")
+	pool.RegisterServer("127.0.0.1:1234")
+	pool.RegisterServer("8.8.8.8:1234")
 
 	for i := 0; i < 10; i++ {
 		cn, err := pool.OpenConnNonBlock(context.Background()) // Context could be cancelable here
@@ -47,7 +47,7 @@ func ExampleNewConnPool_httpRequest() {
 	pool := NewConnPool(*cfg)
 
 	// Register some servers
-	pool.RegisterServer("tcp", "127.0.0.1:1234")
+	pool.RegisterServer("127.0.0.1:1234")
 
 	cn, _ := pool.OpenConn(context.Background()) // success connection
 	defer cn.Close()
@@ -69,8 +69,8 @@ func ExampleNewConnPool_blockingCalls() {
 	pool := NewConnPool(*cfg)
 
 	// Register some servers
-	pool.RegisterServer("tcp", "127.0.0.1:1111")
-	pool.RegisterServer("tcp", "127.0.0.1:2222")
+	pool.RegisterServer("127.0.0.1:1111")
+	pool.RegisterServer("127.0.0.1:2222")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {

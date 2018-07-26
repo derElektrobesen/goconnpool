@@ -53,6 +53,7 @@ func testConfigFillDefaults(t *testing.T) {
 			MaxBackoffInterval:     DefMaxBackoffInterval,
 			Clock:                  SystemClock{},
 			Logger:                 DummyLogger{},
+			Dialer:                 &TCPDialer{},
 		}, s.cfg)
 
 	// just to increment code coverage: nothing to test
@@ -60,6 +61,11 @@ func testConfigFillDefaults(t *testing.T) {
 	s.cfg.Clock.Now()
 	s.cfg.Clock.Since(time.Now())
 	s.cfg.Clock.After(0)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // to prevent locking
+
+	s.cfg.Dialer.Dial(ctx, "127.0.0.1:95328")
 }
 
 func testDefaultConnPoolCreation(t *testing.T) {
@@ -67,13 +73,11 @@ func testDefaultConnPoolCreation(t *testing.T) {
 	t.Parallel()
 
 	s := NewConnPool(Config{})
-	s.RegisterServer("x", "y")
+	s.RegisterServer("y")
 }
 
-func newTestConnProviderFactory(srvs ...connectionProvider) func(
-	network string, addr string, cfg Config, dialer dialer,
-) connectionProvider {
-	return func(network string, addr string, cfg Config, dialer dialer) connectionProvider {
+func newTestConnProviderFactory(srvs ...connectionProvider) func(addr string, cfg Config) connectionProvider {
+	return func(addr string, cfg Config) connectionProvider {
 		if len(srvs) == 0 {
 			panic("unexpected call of conn provider factory")
 		}
@@ -111,9 +115,9 @@ func testOpenConnNonBlock(t *testing.T) {
 	_, err := p.OpenConnNonBlock(context.Background())
 	ass.Equal(ErrNoServersRegistered, err)
 
-	p.RegisterServer("x", "y") // srv1
-	p.RegisterServer("z", "k") // srv2
-	p.RegisterServer("l", "m") // srv3
+	p.RegisterServer("y") // srv1
+	p.RegisterServer("k") // srv2
+	p.RegisterServer("m") // srv3
 
 	srv1.EXPECT().retryTimeout().AnyTimes()
 	srv2.EXPECT().retryTimeout().AnyTimes()
@@ -194,8 +198,8 @@ func testOpenConnBlock(t *testing.T) {
 	_, err := p.OpenConn(context.Background())
 	ass.Equal(ErrNoServersRegistered, err)
 
-	p.RegisterServer("x", "y")
-	p.RegisterServer("xx", "yt")
+	p.RegisterServer("y")
+	p.RegisterServer("yt")
 
 	// check success connection opening
 	cn := &serverConn{}

@@ -3,7 +3,7 @@ package goconnpool
 import (
 	"context"
 	"fmt"
-	"net"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -16,8 +16,10 @@ var (
 type connPool struct {
 	cfg Config
 
+	mu sync.Mutex
+
 	servers             roundRobin
-	connProviderFactory func(network string, addr string, cfg Config, dialer dialer) connectionProvider
+	connProviderFactory func(addr string, cfg Config) connectionProvider
 }
 
 func newConnPool(cfg Config) *connPool {
@@ -56,6 +58,9 @@ func (p *connPool) OpenConnNonBlock(ctx context.Context) (Conn, error) {
 }
 
 func (p *connPool) openConn(ctx context.Context) (Conn, time.Duration, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	if p.servers.size() == 0 {
 		return nil, 0, ErrNoServersRegistered
 	}
@@ -103,8 +108,6 @@ func (p *connPool) openConn(ctx context.Context) (Conn, time.Duration, error) {
 	return nil, maxTimeout, globErr
 }
 
-func (p *connPool) RegisterServer(network string, addr string) {
-	p.servers.push(p.connProviderFactory(network, addr, p.cfg, &net.Dialer{
-		Timeout: p.cfg.ConnectTimeout,
-	}))
+func (p *connPool) RegisterServer(addr string) {
+	p.servers.push(p.connProviderFactory(addr, p.cfg))
 }

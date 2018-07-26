@@ -283,7 +283,7 @@ func testServerIsDown(s testServer) {
 	ctx, cancel := context.WithCancel(ctx)
 	s.dialerMock.EXPECT().
 		Dial(gomock.Any(), gomock.Any()).
-		DoAndReturn(func(ctx context.Context, _ string) (net.Conn, error) {
+		DoAndReturn(func(_ context.Context, _ string) (net.Conn, error) { // nolint:unparam
 			cancel()
 			time.Sleep(10 * time.Millisecond)
 			close(ready)

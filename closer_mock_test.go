@@ -5,9 +5,8 @@
 package goconnpool
 
 import (
-	reflect "reflect"
-
 	gomock "github.com/golang/mock/gomock"
+	reflect "reflect"
 )
 
 // Mockcloser is a mock of closer interface

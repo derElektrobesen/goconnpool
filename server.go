@@ -14,6 +14,10 @@ type dialer interface {
 	DialContext(ctx context.Context, network, address string) (net.Conn, error)
 }
 
+type connectionProvider interface {
+	getConnection(ctx context.Context) (Conn, error)
+}
+
 type server struct {
 	mu sync.Mutex
 
@@ -34,6 +38,10 @@ type server struct {
 	down        bool
 
 	clock Clock
+}
+
+func newServerWrapper(network, addr string, cfg Config, dialer dialer) connectionProvider {
+	return newServer(network, addr, cfg, dialer)
 }
 
 func newServer(network, addr string, cfg Config, dialer dialer) *server {

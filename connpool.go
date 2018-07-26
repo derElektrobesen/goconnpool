@@ -51,7 +51,7 @@ type ConnPool interface {
 	OpenConn(ctx context.Context) (Conn, error)
 
 	// RegisterServer registers new server in connections pool.
-	// This server stands into round-robin queue to be used during OpenCall conn.
+	// This server stands into round-robin queue to be used during OpenConn call.
 	//
 	// This operation is a part of initialization.
 	// Don't try to call it in runtime: not thread safe.

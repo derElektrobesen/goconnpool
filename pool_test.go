@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/benbjohnson/clock"
 	gomock "github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
@@ -107,6 +108,9 @@ func testOpenConnNonBlock(t *testing.T) {
 	srv3 := NewMockconnectionProvider(ctrl)
 	p.connProviderFactory = newTestConnProviderFactory(srv1, srv2, srv3)
 
+	_, err := p.OpenConnNonBlock(context.Background())
+	ass.Equal(ErrNoServersRegistered, err)
+
 	p.RegisterServer("x", "y") // srv1
 	p.RegisterServer("z", "k") // srv2
 	p.RegisterServer("l", "m") // srv3
@@ -168,10 +172,102 @@ func testOpenConnNonBlock(t *testing.T) {
 	ass.Equal("all servers are down", err.Error())
 }
 
+func testOpenConnBlock(t *testing.T) {
+	t.Parallel()
+
+	ass := require.New(t)
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	cl := clock.NewMock()
+
+	p := newConnPool(Config{
+		Logger: testLogger{t: t},
+		Clock:  cl,
+	})
+	srv1 := NewMockconnectionProvider(ctrl)
+	srv2 := NewMockconnectionProvider(ctrl)
+	p.connProviderFactory = newTestConnProviderFactory(srv1, srv2)
+
+	// check call will not be blocked if no servers were passed
+	_, err := p.OpenConn(context.Background())
+	ass.Equal(ErrNoServersRegistered, err)
+
+	p.RegisterServer("x", "y")
+	p.RegisterServer("xx", "yt")
+
+	// check success connection opening
+	cn := &serverConn{}
+	srv1.EXPECT().getConnection(gomock.Any()).Return(cn, nil)
+	gotCn, err := p.OpenConn(context.Background())
+	ass.NoError(err)
+	ass.Equal(cn, gotCn)
+
+	// check retry timeout
+	cn = &serverConn{}
+	gomock.InOrder(
+		srv2.EXPECT().getConnection(gomock.Any()).Return(nil, errServerIsDown),
+		srv1.EXPECT().getConnection(gomock.Any()).Return(nil, errServerIsDown),
+		srv2.EXPECT().getConnection(gomock.Any()).Return(cn, nil),
+	)
+
+	gomock.InOrder(
+		srv2.EXPECT().retryTimeout().Return(time.Minute),
+		srv1.EXPECT().retryTimeout().Return(time.Second),
+	)
+
+	ready := make(chan struct{})
+	go func() {
+		// gomock could be much easier to use in this case, but it not supports chans =(
+		go func() {
+			time.Sleep(100 * time.Millisecond)
+			ready <- struct{}{}
+		}()
+		gotCn, err = p.OpenConn(context.Background())
+		close(ready)
+	}()
+
+	<-ready
+	cl.Add(time.Minute)
+	<-ready
+
+	ass.NoError(err)
+	ass.Equal(cn, gotCn)
+
+	// check loop could be broken with context
+	ctx, cancel := context.WithCancel(context.Background())
+
+	gomock.InOrder(
+		srv1.EXPECT().getConnection(gomock.Any()).Return(nil, errServerIsDown),
+		srv2.EXPECT().getConnection(gomock.Any()).Return(nil, errServerIsDown),
+	)
+
+	gomock.InOrder(
+		srv1.EXPECT().retryTimeout().Return(time.Second),
+		srv2.EXPECT().retryTimeout().Return(time.Minute),
+	)
+
+	ready = make(chan struct{})
+	go func() {
+		ready <- struct{}{}
+		_, err = p.OpenConn(ctx)
+		close(ready)
+	}()
+
+	<-ready
+	cancel()
+	<-ready
+
+	ass.Error(err)
+	ass.Equal("operation cancelled", err.Error())
+}
+
 func testOpenConn(t *testing.T) {
 	t.Parallel()
 
 	t.Run("open_conn_non_block", testOpenConnNonBlock)
+	t.Run("open_conn_block", testOpenConnBlock)
 }
 
 func testOpenConnection(t *testing.T) {

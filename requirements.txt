@@ -1,4 +1,0 @@
-benbjohnson/clock
-cenkalti/backoff
-golang/mock
-pkg/errors

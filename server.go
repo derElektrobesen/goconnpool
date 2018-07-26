@@ -219,3 +219,7 @@ func (cn *serverConn) Close() error {
 func (cn *serverConn) MarkBroken() {
 	cn.unusable = true
 }
+
+func (cn *serverConn) OriginalConn() net.Conn {
+	return cn.Conn
+}

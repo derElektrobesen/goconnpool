@@ -23,6 +23,34 @@ type Conn interface {
 	// connection will be closed when Close() method will be invoked.
 	// Otherwise connection will be returned into connections pool when Close function will be called.
 	MarkBroken()
+
+	// OriginalConn returns original connection returned by the dialer.
+	// Could be useful when the connection have the specific type and only this type could be used to interact with
+	// server.
+	//
+	// XXX: Returned connection shouldn't be closed.
+	//
+	//	type MyDialer struct {}
+	//	type MyConn struct {
+	//		net.Conn
+	//	}
+	//
+	//	func (MyDialer) Dial(ctx context.Context, addr string) (net.Conn, error) {
+	//		return MyConn{}, nil
+	//	}
+	//
+	//	// .....
+	//
+	//	p := NewConnPool(Config{
+	//		Dialer: MyDialer{},
+	//	})
+	//
+	//	cn, _ := p.OpenConn(context.Background())
+	//	origCn := cn.OriginalConn().(MyConn)
+	//	defer cn.Close() // XXX: Not origCn.Close() !!!
+	//
+	//	// Use origCn in some way
+	OriginalConn() net.Conn
 }
 
 // ConnPool is the base interface to interact with user.

@@ -309,8 +309,11 @@ func testServerIsDown(s testServer) {
 		Return(&net.IPConn{}, nil)
 
 	s.clockMock.Add(31 * time.Second) // 2m32s elapsed, nextBackoff == 2m32s
-	_, err = s.s.getConnection(ctx)
+	gotCn, err := s.s.getConnection(ctx)
 	s.ass.NoError(err)
+
+	_, ok := gotCn.OriginalConn().(*net.IPConn)
+	s.ass.True(ok)
 
 	// Check backoff correctly updated when server was up
 	s.clockMock.Add(time.Microsecond) // required to not hit ratelimits

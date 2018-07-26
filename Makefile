@@ -10,7 +10,8 @@ test:
 	go test -race -v ./...
 
 gen:
-	mockgen -source=server.go -package=goconnpool dialer,connectionProvider > server_mock_test.go
+	mockgen -source=server.go -package=goconnpool connectionProvider > server_mock_test.go
+	mockgen -source=dialer.go -package=goconnpool Dialer > dialer_mock_test.go
 	mockgen -source=server_test.go -package=goconnpool closer > closer_mock_test.go
 
 lint:

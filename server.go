@@ -10,10 +10,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-type dialer interface {
-	DialContext(ctx context.Context, network, address string) (net.Conn, error)
-}
-
 type connectionProvider interface {
 	getConnection(ctx context.Context) (Conn, error)
 	retryTimeout() time.Duration
@@ -22,8 +18,8 @@ type connectionProvider interface {
 type server struct {
 	mu sync.Mutex
 
-	network string
-	addr    string
+	addr           string
+	connectTimeout time.Duration
 
 	nOpenedConns int
 	maxConns     int
@@ -32,7 +28,7 @@ type server struct {
 	reqDuration time.Duration
 	lastUsage   time.Time
 
-	dialer dialer
+	dialer Dialer
 
 	bOff        backoff.BackOff
 	nextBackoff time.Time
@@ -41,11 +37,11 @@ type server struct {
 	clock Clock
 }
 
-func newServerWrapper(network, addr string, cfg Config, dialer dialer) connectionProvider {
-	return newServer(network, addr, cfg, dialer)
+func newServerWrapper(addr string, cfg Config) connectionProvider {
+	return newServer(addr, cfg)
 }
 
-func newServer(network, addr string, cfg Config, dialer dialer) *server {
+func newServer(addr string, cfg Config) *server {
 	bc := backoff.NewExponentialBackOff()
 	bc.InitialInterval = cfg.InitialBackoffInterval
 	bc.MaxInterval = cfg.MaxBackoffInterval
@@ -60,11 +56,12 @@ func newServer(network, addr string, cfg Config, dialer dialer) *server {
 	}
 
 	return &server{
-		network:  network,
 		addr:     addr,
 		maxConns: cfg.MaxConnsPerServer,
-		dialer:   dialer,
+		dialer:   cfg.Dialer,
 		bOff:     bc,
+
+		connectTimeout: cfg.ConnectTimeout,
 
 		reqDuration: time.Duration(1000000.0/float64(cfg.MaxRPS)) * time.Microsecond,
 
@@ -122,6 +119,36 @@ func (s *server) getRatelimitTimeout() time.Duration {
 	return 0
 }
 
+func (s *server) makeConnection(ctx context.Context) (net.Conn, error) {
+	var (
+		cn  net.Conn
+		err error
+	)
+
+	// Trying to establish connection
+	ctx, cancel := context.WithTimeout(ctx, s.connectTimeout)
+	defer cancel() // required to release context resources in case if ready chan was closed before timeout
+
+	ready := make(chan struct{})
+	go func() {
+		cn, err = s.dialer.Dial(ctx, s.addr)
+		close(ready)
+	}()
+
+	select {
+	case <-ctx.Done():
+		// Check connection were really done
+		select {
+		case <-ready:
+			return cn, err
+		default:
+			return nil, errors.New("timeout")
+		}
+	case <-ready:
+		return cn, err
+	}
+}
+
 func (s *server) getConnection(ctx context.Context) (Conn, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -145,13 +172,12 @@ func (s *server) getConnection(ctx context.Context) (Conn, error) {
 		}
 	}
 
-	// Trying to establish connection
-	cn, err := s.dialer.DialContext(ctx, s.network, s.addr)
+	cn, err := s.makeConnection(ctx)
 	if err != nil {
 		s.down = true
 		s.nextBackoff = s.clock.Now().Add(s.bOff.NextBackOff())
 		return nil, errors.Wrapf(errServerIsDown,
-			"can't establish %s connection to %s: %s", s.network, s.addr, err)
+			"can't establish connection to %s: %s", s.addr, err)
 	}
 
 	s.nOpenedConns++

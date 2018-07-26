@@ -22,7 +22,7 @@ type testServer struct {
 
 	ctrl *gomock.Controller
 
-	dialerMock *Mockdialer
+	dialerMock *MockDialer
 	clockMock  *clock.Mock
 }
 
@@ -37,6 +37,11 @@ func (s testServer) withConfig(cfg Config) testServer {
 	}
 
 	s.cfg = cfg
+	return s
+}
+
+func (s testServer) withoutTimeouts() testServer {
+	s.cfg.ConnectTimeout = 24 * time.Hour
 	return s
 }
 
@@ -71,14 +76,15 @@ func (s testServer) wrap(cb func(s testServer)) func(t *testing.T) {
 		s.t = t
 		s.ass = require.New(t)
 
-		s.dialerMock = NewMockdialer(ctrl)
+		s.dialerMock = NewMockDialer(ctrl)
 		s.clockMock = clock.NewMock()
 		s.clockMock.Set(time.Unix(1514764800, 0).UTC())
 
 		s.cfg.Clock = s.clockMock
+		s.cfg.Dialer = s.dialerMock
 		s.ctrl = ctrl
 
-		s.s = newServer("tcp", "addr", s.cfg, s.dialerMock)
+		s.s = newServer("addr", s.cfg)
 
 		cb(s)
 	}
@@ -86,7 +92,7 @@ func (s testServer) wrap(cb func(s testServer)) func(t *testing.T) {
 
 func testRatelimits(s testServer) {
 	s.dialerMock.EXPECT().
-		DialContext(gomock.Any(), gomock.Any(), gomock.Any()).
+		Dial(gomock.Any(), gomock.Any()).
 		Return(&net.IPConn{}, nil).
 		Times(3)
 
@@ -127,7 +133,7 @@ func testRatelimits(s testServer) {
 
 func testTooManyConns(s testServer) {
 	s.dialerMock.EXPECT().
-		DialContext(gomock.Any(), gomock.Any(), gomock.Any()).
+		Dial(gomock.Any(), gomock.Any()).
 		Return(&net.IPConn{}, nil).
 		Times(3)
 
@@ -182,15 +188,15 @@ func (s testServer) newClosableTestConn(err error, needClose bool) net.Conn {
 	}
 }
 
-func (s testServer) newClosableTestConnFactory(err error) func(context.Context, string, string) (net.Conn, error) {
-	return func(context.Context, string, string) (net.Conn, error) {
+func (s testServer) newClosableTestConnFactory(err error) func(context.Context, string) (net.Conn, error) {
+	return func(context.Context, string) (net.Conn, error) {
 		return s.newClosableTestConn(nil, false), err
 	}
 }
 
 func testConnsReuse(s testServer) {
 	s.dialerMock.EXPECT().
-		DialContext(gomock.Any(), gomock.Any(), gomock.Any()).
+		Dial(gomock.Any(), gomock.Any()).
 		DoAndReturn(s.newClosableTestConnFactory(nil)).
 		Times(2)
 
@@ -215,7 +221,7 @@ func testConnsReuse(s testServer) {
 func testBrokenConns(s testServer) {
 	cn := s.newClosableTestConn(fmt.Errorf("xxx"), true)
 	s.dialerMock.EXPECT().
-		DialContext(gomock.Any(), gomock.Any(), gomock.Any()).
+		Dial(gomock.Any(), gomock.Any()).
 		Return(cn, nil)
 
 	cn1 := s.getConnectionNoError() // this connection is really wrapped `cn` connection
@@ -226,7 +232,7 @@ func testBrokenConns(s testServer) {
 	s.ass.Error(cn1.Close()) // error equals to "xxx" here. Close() call is expected here
 
 	s.dialerMock.EXPECT().
-		DialContext(gomock.Any(), gomock.Any(), gomock.Any()).
+		Dial(gomock.Any(), gomock.Any()).
 		Return(&net.IPConn{}, nil).
 		Times(3) // check number of opened conns was decremented
 
@@ -255,7 +261,7 @@ func testServerIsDown(s testServer) {
 	ctx := context.Background()
 
 	s.dialerMock.EXPECT().
-		DialContext(gomock.Any(), gomock.Any(), gomock.Any()).
+		Dial(gomock.Any(), gomock.Any()).
 		Return(nil, fmt.Errorf("xxx"))
 
 	_, err := s.s.getConnection(ctx) // Dial() returned an error here
@@ -273,7 +279,7 @@ func testServerIsDown(s testServer) {
 	s.ass.Equal(time.Duration(0), s.s.retryTimeout())
 
 	s.dialerMock.EXPECT().
-		DialContext(gomock.Any(), gomock.Any(), gomock.Any()).
+		Dial(gomock.Any(), gomock.Any()).
 		Return(nil, fmt.Errorf("yyy"))
 
 	// backoff interval passed: retry connection (with error)
@@ -288,7 +294,7 @@ func testServerIsDown(s testServer) {
 
 	// Next Dial() will return correct connection
 	s.dialerMock.EXPECT().
-		DialContext(gomock.Any(), gomock.Any(), gomock.Any()).
+		Dial(gomock.Any(), gomock.Any()).
 		Return(&net.IPConn{}, nil)
 
 	s.clockMock.Add(31 * time.Second) // 2m32s elapsed, nextBackoff == 2m32s
@@ -298,7 +304,7 @@ func testServerIsDown(s testServer) {
 	// Check backoff correctly updated when server was up
 	s.clockMock.Add(time.Microsecond) // required to not hit ratelimits
 	s.dialerMock.EXPECT().
-		DialContext(gomock.Any(), gomock.Any(), gomock.Any()).
+		Dial(gomock.Any(), gomock.Any()).
 		Return(nil, fmt.Errorf("zzz"))
 
 	_, err = s.s.getConnection(ctx)
@@ -314,6 +320,7 @@ func TestServer(t *testing.T) {
 				MaxRPS:            10,
 				MaxConnsPerServer: 10,
 			}).
+			withoutTimeouts().
 			wrap(testRatelimits),
 	)
 
@@ -323,12 +330,14 @@ func TestServer(t *testing.T) {
 				MaxRPS:            99999999,
 				MaxConnsPerServer: 3,
 			}).
+			withoutTimeouts().
 			wrap(testTooManyConns),
 	)
 
 	t.Run("reuse_already_opened_conn",
 		newTestServer().
 			withoutRateLimits().
+			withoutTimeouts().
 			wrap(testConnsReuse),
 	)
 
@@ -338,6 +347,7 @@ func TestServer(t *testing.T) {
 				MaxRPS:            99999999,
 				MaxConnsPerServer: 3,
 			}).
+			withoutTimeouts().
 			wrap(testBrokenConns),
 	)
 
@@ -350,6 +360,7 @@ func TestServer(t *testing.T) {
 				backoffRandomizationFactor: &backoffRandomizationFactor,
 			}).
 			withoutRateLimits().
+			withoutTimeouts().
 			wrap(testServerIsDown),
 	)
 }

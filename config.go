@@ -3,11 +3,20 @@ package goconnpool
 import "time"
 
 const (
-	DefMaxConnsPerServer   = 1
-	DefMaxRPS              = 100
-	DefConnectTimeout      = 5 * time.Second
+	// DefMaxConnsPerServer is the default value for MaxConnsPerServer config variable.
+	DefMaxConnsPerServer = 1
+
+	// DefMaxRPS is the default value for MaxRPS config variable.
+	DefMaxRPS = 100
+
+	// DefConnectTimeout is the default value for ConnectTimeout config variable.
+	DefConnectTimeout = 5 * time.Second
+
+	// DefInitBackoffInterval is the default value for InitialBackoffInterval config variable.
 	DefInitBackoffInterval = 100 * time.Millisecond
-	DefMaxBackoffInterval  = 30 * time.Second
+
+	// DefMaxBackoffInterval is the default value for MaxBackoffInterval config variable.
+	DefMaxBackoffInterval = 30 * time.Second
 )
 
 // Config holds some fields required during new connection establishing.
@@ -25,10 +34,7 @@ type Config struct {
 	MaxRPS int
 
 	// ConnectTimeout is the maximum amount of time a dial will wait for
-	// a connect to complete. If ConnectDeadline is also set, it may fail
-	// earlier.
-	//
-	// See https://golang.org/pkg/net/#Dialer for more info.
+	// a connect to complete.
 	//
 	// Default is DefConnectTimeout.
 	ConnectTimeout time.Duration
@@ -52,6 +58,14 @@ type Config struct {
 	// Logger could be used to view some messages, printed by the library.
 	// This messages could contain information about server status, about some errors or something else.
 	Logger Logger
+
+	// Dialer is used to dial to the specific server.
+	//
+	// Required because some protocols (like thrift) can't be used with raw net.Conn object:
+	// they establishes connection in some specific way.
+	//
+	// TCPDialer is the default.
+	Dialer Dialer
 
 	// backoffRandomizationFactor is used in tests only: default randomization factor is used in produnction.
 	// See https://godoc.org/github.com/cenkalti/backoff#ExponentialBackOff for more info
@@ -114,6 +128,10 @@ func (c Config) withDefaults() Config {
 
 	if c.Logger == nil {
 		c.Logger = DummyLogger{}
+	}
+
+	if c.Dialer == nil {
+		c.Dialer = &TCPDialer{}
 	}
 
 	return c

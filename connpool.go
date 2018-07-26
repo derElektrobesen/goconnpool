@@ -55,7 +55,7 @@ type ConnPool interface {
 	//
 	// This operation is a part of initialization.
 	// Don't try to call it in runtime: not thread safe.
-	RegisterServer(network string, addr string)
+	RegisterServer(addr string)
 }
 
 // NewConnPool creates new pool with configuration passed.

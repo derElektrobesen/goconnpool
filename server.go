@@ -2,6 +2,7 @@ package goconnpool
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -36,6 +37,11 @@ type server struct {
 
 	clock Clock
 }
+
+var (
+	errRatelimit    = fmt.Errorf("ratelimit")
+	errServerIsDown = fmt.Errorf("server is down")
+)
 
 func newServerWrapper(addr string, cfg Config) connectionProvider {
 	return newServer(addr, cfg)
@@ -154,7 +160,7 @@ func (s *server) getConnection(ctx context.Context) (Conn, error) {
 	defer s.mu.Unlock()
 
 	if !s.updateLastUsage() {
-		return nil, errors.Wrap(errRatelimited, "too frequent request")
+		return nil, errors.Wrap(errRatelimit, "too frequent request")
 	}
 
 	if s.openedConns.size() > 0 {
@@ -162,7 +168,7 @@ func (s *server) getConnection(ctx context.Context) (Conn, error) {
 	}
 
 	if s.nOpenedConns >= s.maxConns {
-		return nil, errors.Wrap(errRatelimited, "too many opened connections")
+		return nil, errors.Wrap(errRatelimit, "too many opened connections")
 	}
 
 	if s.down {

@@ -84,7 +84,7 @@ func (p *connPool) openConn(ctx context.Context) (Conn, time.Duration, error) {
 		case errServerIsDown:
 			p.cfg.Logger.Printf("can't connect to server: %s", err)
 			hasDown = true
-		case errRatelimited:
+		case errRatelimit:
 			hasRatelimited = true
 		default:
 			p.cfg.Logger.Printf("can't connect to server: %s", err)

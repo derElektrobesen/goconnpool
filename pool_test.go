@@ -46,11 +46,11 @@ func testConfigFillDefaults(t *testing.T) {
 	s := newConnPool(Config{})
 	require.Equal(t,
 		Config{
-			MaxConnsPerServer:      DefMaxConnsPerServer,
-			MaxRPS:                 DefMaxRPS,
-			ConnectTimeout:         DefConnectTimeout,
-			InitialBackoffInterval: DefInitBackoffInterval,
-			MaxBackoffInterval:     DefMaxBackoffInterval,
+			MaxConnsPerServer:      DefaultMaxConnsPerServer,
+			MaxRPS:                 DefaultMaxRPS,
+			ConnectTimeout:         DefaultConnectTimeout,
+			InitialBackoffInterval: DefaultInitBackoffInterval,
+			MaxBackoffInterval:     DefaultMaxBackoffInterval,
 			Clock:                  SystemClock{},
 			Logger:                 DummyLogger{},
 			Dialer:                 &TCPDialer{},
@@ -137,7 +137,7 @@ func testOpenConnNonBlock(t *testing.T) {
 
 	cn = &serverConn{}
 	gomock.InOrder(
-		srv3.EXPECT().getConnection(gomock.Any()).Return(nil, errRatelimited),
+		srv3.EXPECT().getConnection(gomock.Any()).Return(nil, errRatelimit),
 		srv1.EXPECT().getConnection(gomock.Any()).Return(cn, nil),
 	)
 
@@ -146,7 +146,7 @@ func testOpenConnNonBlock(t *testing.T) {
 	ass.Equal(cn, gotCn)
 
 	gomock.InOrder(
-		srv2.EXPECT().getConnection(gomock.Any()).Return(nil, errRatelimited),
+		srv2.EXPECT().getConnection(gomock.Any()).Return(nil, errRatelimit),
 		srv3.EXPECT().getConnection(gomock.Any()).Return(nil, errServerIsDown),
 		srv1.EXPECT().getConnection(gomock.Any()).Return(nil, fmt.Errorf("xxx")),
 	)
@@ -156,9 +156,9 @@ func testOpenConnNonBlock(t *testing.T) {
 	ass.Equal("some servers are down, other ratelimited", err.Error())
 
 	gomock.InOrder(
-		srv2.EXPECT().getConnection(gomock.Any()).Return(nil, errRatelimited),
-		srv3.EXPECT().getConnection(gomock.Any()).Return(nil, errRatelimited),
-		srv1.EXPECT().getConnection(gomock.Any()).Return(nil, errRatelimited),
+		srv2.EXPECT().getConnection(gomock.Any()).Return(nil, errRatelimit),
+		srv3.EXPECT().getConnection(gomock.Any()).Return(nil, errRatelimit),
+		srv1.EXPECT().getConnection(gomock.Any()).Return(nil, errRatelimit),
 	)
 
 	_, err = p.OpenConnNonBlock(context.Background())

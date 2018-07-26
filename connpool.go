@@ -6,13 +6,7 @@ package goconnpool
 
 import (
 	"context"
-	"fmt"
 	"net"
-)
-
-var (
-	errRatelimited  = fmt.Errorf("ratelimited")
-	errServerIsDown = fmt.Errorf("server is down")
 )
 
 // Conn is a wrapper around net.Conn interface
@@ -42,7 +36,7 @@ type ConnPool interface {
 	// Otherwise function returns active connection (to some alive server in round-robin order)
 	// which could be used to send any type of request.
 	//
-	// Connection should be closed after usage. This action will return connection into pool.
+	// Connection should be closed after use. This action will return connection into pool.
 	// If you understand the connection should be completely closed, call conn.MarkBroken first.
 	//
 	// Pool regulates number of requests per server using MaxRPS config variable.

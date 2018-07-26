@@ -110,19 +110,19 @@ func testRatelimits(s testServer) {
 
 	// call #3, ratelimited
 	_, err = s.s.getConnection(context.Background())
-	s.ass.Equal(errRatelimited, errors.Cause(err))
+	s.ass.Equal(errRatelimit, errors.Cause(err))
 
 	s.ass.Equal(100*time.Millisecond, s.s.retryTimeout())
 
 	// call #4, still ratelimited
 	s.clockMock.Add(time.Millisecond)
 	_, err = s.s.getConnection(context.Background())
-	s.ass.Equal(errRatelimited, errors.Cause(err))
+	s.ass.Equal(errRatelimit, errors.Cause(err))
 
 	// call #5, still ratelimited
 	s.clockMock.Add(98 * time.Millisecond)
 	_, err = s.s.getConnection(context.Background())
-	s.ass.Equal(errRatelimited, errors.Cause(err))
+	s.ass.Equal(errRatelimit, errors.Cause(err))
 
 	// call #6, timeout came
 	s.clockMock.Add(2 * time.Millisecond)
@@ -154,7 +154,7 @@ func testTooManyConns(s testServer) {
 	s.clockMock.Add(time.Second)
 	_, err = s.s.getConnection(context.Background())
 	s.ass.Error(err)
-	s.ass.Equal(errRatelimited, errors.Cause(err))
+	s.ass.Equal(errRatelimit, errors.Cause(err))
 
 	s.ass.Equal(100*time.Millisecond, s.s.retryTimeout())
 }

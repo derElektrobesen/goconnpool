@@ -45,6 +45,10 @@ type Config struct {
 	// Logger could be used to view some messages, printed by the library.
 	// This messages could contain information about server status, about some errors or something else.
 	Logger Logger
+
+	// backoffRandomizationFactor is used in tests only: default randomization factor is used in produnction.
+	// See https://godoc.org/github.com/cenkalti/backoff#ExponentialBackOff for more info
+	backoffRandomizationFactor *float64
 }
 
 // FlagsParser is needed to embed goconnpool into production application.

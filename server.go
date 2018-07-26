@@ -43,6 +43,13 @@ func newServer(network, addr string, cfg Config, dialer dialer) *server {
 	bc.MaxElapsedTime = 0
 	bc.Clock = cfg.Clock
 
+	bc.Reset() // required to re-setup config options
+
+	if cfg.backoffRandomizationFactor != nil {
+		// only for tests. Default backoff interval should be used in production
+		bc.RandomizationFactor = *cfg.backoffRandomizationFactor
+	}
+
 	return &server{
 		network:  network,
 		addr:     addr,
@@ -50,7 +57,7 @@ func newServer(network, addr string, cfg Config, dialer dialer) *server {
 		dialer:   dialer,
 		bOff:     bc,
 
-		reqDuration: time.Duration(1000.0/float64(cfg.MaxRPS)) * time.Millisecond,
+		reqDuration: time.Duration(1000000.0/float64(cfg.MaxRPS)) * time.Microsecond,
 
 		clock: cfg.Clock,
 	}
@@ -134,6 +141,6 @@ func (cn *serverConn) Close() error {
 	return nil
 }
 
-func (cn *serverConn) MarkUnusable() {
+func (cn *serverConn) MarkBroken() {
 	cn.unusable = true
 }

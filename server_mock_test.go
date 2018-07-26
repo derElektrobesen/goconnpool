@@ -6,11 +6,10 @@ package goconnpool
 
 import (
 	context "context"
+	gomock "github.com/golang/mock/gomock"
 	net "net"
 	reflect "reflect"
 	time "time"
-
-	gomock "github.com/golang/mock/gomock"
 )
 
 // Mockdialer is a mock of dialer interface

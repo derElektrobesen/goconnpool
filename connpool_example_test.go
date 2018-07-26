@@ -5,6 +5,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	net "net"
 	"net/http"
 	"time"
 )
@@ -88,4 +89,51 @@ func ExampleNewConnPool_blockingCalls() {
 	defer cn.Close()
 
 	// use your conn
+}
+
+type MyConn struct {
+	net.Conn
+}
+
+func (MyConn) Hello() string {
+	return "Hello"
+}
+
+type MyDialer struct{}
+
+func (MyDialer) Dial(ctx context.Context, addr string) (net.Conn, error) {
+	return MyConn{}, nil
+}
+
+// Example shows how to use custom dialer.
+//
+//  type MyDialer struct{}
+//
+//  type MyConn struct {
+//    net.Conn
+//  }
+//
+//  func (MyConn) Hello() string {
+//    return "Hello"
+//  }
+//
+//  func (MyDialer) Dial(ctx context.Context, addr string) (net.Conn, error) {
+//    return MyConn{}, nil
+//  }
+//
+func ExampleNewConnPool_dialer() {
+	p := NewConnPool(Config{
+		Dialer: MyDialer{},
+	})
+
+	p.RegisterServer("google.com")
+
+	cn, _ := p.OpenConn(context.Background())
+	origCn := cn.OriginalConn().(MyConn)
+	defer cn.Close() // XXX: Not origCn.Close() !!!
+
+	// Use origCn in some way
+	fmt.Println(origCn.Hello())
+
+	// Output: Hello
 }

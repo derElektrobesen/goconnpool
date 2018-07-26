@@ -29,27 +29,6 @@ type Conn interface {
 	// server.
 	//
 	// XXX: Returned connection shouldn't be closed.
-	//
-	//	type MyDialer struct {}
-	//	type MyConn struct {
-	//		net.Conn
-	//	}
-	//
-	//	func (MyDialer) Dial(ctx context.Context, addr string) (net.Conn, error) {
-	//		return MyConn{}, nil
-	//	}
-	//
-	//	// .....
-	//
-	//	p := NewConnPool(Config{
-	//		Dialer: MyDialer{},
-	//	})
-	//
-	//	cn, _ := p.OpenConn(context.Background())
-	//	origCn := cn.OriginalConn().(MyConn)
-	//	defer cn.Close() // XXX: Not origCn.Close() !!!
-	//
-	//	// Use origCn in some way
 	OriginalConn() net.Conn
 }
 

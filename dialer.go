@@ -16,6 +16,8 @@ type Dialer interface {
 	// timeout.
 	//
 	// address variable is the same address used into RegisterServer call.
+	//
+	// You could get original connection returned by the Dial() call using Conn.OriginalConn().
 	Dial(ctx context.Context, address string) (net.Conn, error)
 }
 

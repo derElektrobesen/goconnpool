@@ -65,7 +65,7 @@ func testConfigFillDefaults(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // to prevent locking
 
-	s.cfg.Dialer.Dial(ctx, "127.0.0.1:95328")
+	s.cfg.Dialer.Dial(ctx, "127.0.0.1:95328") // nolint:errcheck
 }
 
 func testDefaultConnPoolCreation(t *testing.T) {

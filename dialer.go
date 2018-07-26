@@ -9,9 +9,9 @@ import (
 type Dialer interface {
 	// Dial dials the address passed (this address is one of the registered servers addresses).
 	//
-	// Function should return net.Conn-compitable connection.
+	// Function should return net.Conn-compatible connection.
 	//
-	// Funtion should be implemented in the thread-safe way.
+	// Function should be implemented in the thread-safe way.
 	// Connect timeout is setuped before this function invocation: be sure your function not stuck in the case of
 	// timeout.
 	//

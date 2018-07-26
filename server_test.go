@@ -278,14 +278,25 @@ func testServerIsDown(s testServer) {
 
 	s.ass.Equal(time.Duration(0), s.s.retryTimeout())
 
+	// Test timeouts
+	ready := make(chan struct{})
+	ctx, cancel := context.WithCancel(ctx)
 	s.dialerMock.EXPECT().
 		Dial(gomock.Any(), gomock.Any()).
-		Return(nil, fmt.Errorf("yyy"))
+		DoAndReturn(func(ctx context.Context, _ string) (net.Conn, error) {
+			cancel()
+			time.Sleep(10 * time.Millisecond)
+			close(ready)
+			return &net.TCPConn{}, nil
+		})
 
 	// backoff interval passed: retry connection (with error)
 	// nextBackoff == 1m1s + 1m30s == 2m31s
 	_, err = s.s.getConnection(ctx)
 	s.ass.Equal(errServerIsDown, errors.Cause(err))
+
+	<-ready // to be sure gomock returned control
+	ctx = context.Background()
 
 	// Check backoff interval updated: Dial() shouldn't be called here
 	s.clockMock.Add(time.Minute) // 2m1s elapsed, nextBackoff == 2m31s

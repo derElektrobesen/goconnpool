@@ -61,7 +61,7 @@ type Config struct {
 
 	// Dialer is used to dial to the specific server.
 	//
-	// Required because some protocols (like thrift) can't be used with raw net.Conn object:
+	// Required because some protocols (like thrift or websockets) can't be used with raw net.Conn object:
 	// they establishes connection in some specific way.
 	//
 	// TCPDialer is the default.

@@ -51,7 +51,10 @@ func testConfigFillDefaults(t *testing.T) {
 			Logger:                 DummyLogger{},
 		}, s.cfg)
 
-	s.Logger.Printf(">>>") // just to increment code coverage
+	// just to increment code coverage
+	s.cfg.Logger.Printf(">>>")
+	s.cfg.Clock.Now()
+	s.cfg.Clock.Since(time.Now())
 }
 
 func testOpenConnection(t *testing.T) {

@@ -16,6 +16,7 @@ type dialer interface {
 
 type connectionProvider interface {
 	getConnection(ctx context.Context) (Conn, error)
+	retryTimeout() time.Duration
 }
 
 type server struct {
@@ -72,12 +73,53 @@ func newServer(network, addr string, cfg Config, dialer dialer) *server {
 }
 
 func (s *server) updateLastUsage() bool {
-	if s.clock.Since(s.lastUsage) > s.reqDuration {
-		s.lastUsage = s.clock.Now()
-		return true
+	if s.getRatelimitTimeout() > 0 {
+		return false
 	}
 
-	return false
+	s.lastUsage = s.clock.Now()
+	return true
+}
+
+func (s *server) retryTimeout() time.Duration {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var waitFor time.Duration
+	if s.down {
+		waitFor = s.getDownTimeout()
+	}
+
+	if waitFor == 0 {
+		waitFor = s.getRatelimitTimeout()
+	}
+
+	if waitFor == 0 && s.nOpenedConns >= s.maxConns {
+		// too many opened connections: can't open connection right now
+		waitFor = 100 * time.Millisecond // TODO: move into config
+	}
+
+	return waitFor
+}
+
+func (s *server) getDownTimeout() time.Duration {
+	waitFor := s.clock.Since(s.nextBackoff)
+	if waitFor < 0 {
+		waitFor *= time.Duration(-1)
+		return waitFor
+	}
+
+	return 0
+}
+
+func (s *server) getRatelimitTimeout() time.Duration {
+	waitFor := s.clock.Since(s.lastUsage) - s.reqDuration
+	if waitFor < 0 {
+		waitFor *= time.Duration(-1)
+		return waitFor
+	}
+
+	return 0
 }
 
 func (s *server) getConnection(ctx context.Context) (Conn, error) {
@@ -97,9 +139,8 @@ func (s *server) getConnection(ctx context.Context) (Conn, error) {
 	}
 
 	if s.down {
-		waitFor := s.clock.Since(s.nextBackoff)
-		if waitFor < 0 {
-			waitFor *= time.Duration(-1)
+		waitFor := s.getDownTimeout()
+		if waitFor > 0 {
 			return nil, errors.Wrapf(errServerIsDown, "retry after %s", waitFor)
 		}
 	}

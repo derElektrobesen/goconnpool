@@ -57,3 +57,15 @@ func (m *MockClock) Since(arg0 time.Time) time.Duration {
 func (mr *MockClockMockRecorder) Since(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Since", reflect.TypeOf((*MockClock)(nil).Since), arg0)
 }
+
+// After mocks base method
+func (m *MockClock) After(arg0 time.Duration) <-chan time.Time {
+	ret := m.ctrl.Call(m, "After", arg0)
+	ret0, _ := ret[0].(<-chan time.Time)
+	return ret0
+}
+
+// After indicates an expected call of After
+func (mr *MockClockMockRecorder) After(arg0 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "After", reflect.TypeOf((*MockClock)(nil).After), arg0)
+}

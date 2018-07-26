@@ -8,6 +8,7 @@ import (
 	context "context"
 	net "net"
 	reflect "reflect"
+	time "time"
 
 	gomock "github.com/golang/mock/gomock"
 )
@@ -82,4 +83,16 @@ func (m *MockconnectionProvider) getConnection(ctx context.Context) (Conn, error
 // getConnection indicates an expected call of getConnection
 func (mr *MockconnectionProviderMockRecorder) getConnection(ctx interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "getConnection", reflect.TypeOf((*MockconnectionProvider)(nil).getConnection), ctx)
+}
+
+// retryTimeout mocks base method
+func (m *MockconnectionProvider) retryTimeout() time.Duration {
+	ret := m.ctrl.Call(m, "retryTimeout")
+	ret0, _ := ret[0].(time.Duration)
+	return ret0
+}
+
+// retryTimeout indicates an expected call of retryTimeout
+func (mr *MockconnectionProviderMockRecorder) retryTimeout() *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "retryTimeout", reflect.TypeOf((*MockconnectionProvider)(nil).retryTimeout))
 }

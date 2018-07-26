@@ -27,7 +27,7 @@ type Conn interface {
 
 // ConnPool is the base interface to interact with user.
 type ConnPool interface {
-	// GetConnection requests one connection from the pool.
+	// OpenConnNonBlock requests one connection from the pool.
 	//
 	// If the pool already contains opened connection, this connection will be returned.
 	//
@@ -44,6 +44,10 @@ type ConnPool interface {
 	//
 	// Returned error couldn't contain anough information about any server status and therefore
 	// Logger was used. Don't forget to setup Logger if you want to know this info.
+	OpenConnNonBlock(ctx context.Context) (Conn, error)
+
+	// OpenConn does same things as OpenConnNonBlock, but it blocks until new connection
+	// will be established. This process could be cancelled using the context.
 	OpenConn(ctx context.Context) (Conn, error)
 
 	// RegisterServer registers new server in connections pool.

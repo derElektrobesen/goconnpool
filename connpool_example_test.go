@@ -21,7 +21,7 @@ func ExampleNewConnPool_base() {
 	pool.RegisterServer("tcp", "8.8.8.8:1234")
 
 	for i := 0; i < 10; i++ {
-		cn, err := pool.OpenConn(context.Background()) // Context could be cancelable here
+		cn, err := pool.OpenConnNonBlock(context.Background()) // Context could be cancelable here
 		if err != nil {
 			// All servers are down or ratelimited: try again later
 			time.Sleep(100 * time.Millisecond)
@@ -49,7 +49,7 @@ func ExampleNewConnPool_httpRequest() {
 	// Register some servers
 	pool.RegisterServer("tcp", "127.0.0.1:1234")
 
-	cn, _ := pool.OpenConn(context.Background())
+	cn, _ := pool.OpenConn(context.Background()) // success connection
 	defer cn.Close()
 
 	// You could implement your own transport in the same way:
@@ -59,4 +59,33 @@ func ExampleNewConnPool_httpRequest() {
 	resp, _ := http.ReadResponse(bufio.NewReader(cn), req)
 
 	fmt.Println(resp.ContentLength)
+}
+
+func ExampleNewConnPool_blockingCalls() {
+	cfg := NewConfig(&flag.FlagSet{})
+	flag.Parse() // XXX: This call is required to fill config variables
+
+	// Create a pool
+	pool := NewConnPool(*cfg)
+
+	// Register some servers
+	pool.RegisterServer("tcp", "127.0.0.1:1111")
+	pool.RegisterServer("tcp", "127.0.0.1:2222")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		time.Sleep(10 * time.Second)
+		cancel() // timeout
+	}()
+
+	// Following call will blocks until any connection (to port 1111 or to port 2222) will be established.
+	// We will cancel the request if we still can't connect after 10 seconds
+	cn, err := pool.OpenConn(ctx)
+	if err != nil {
+		// Timeout
+	}
+
+	defer cn.Close()
+
+	// use your conn
 }

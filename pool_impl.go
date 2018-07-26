@@ -9,6 +9,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+var (
+	ErrNoServersRegistered = fmt.Errorf("no registered servers found")
+)
+
 type connPool struct {
 	cfg Config
 
@@ -32,12 +36,16 @@ func (p *connPool) OpenConn(ctx context.Context) (Conn, error) {
 			return cn, nil
 		}
 
+		if err == ErrNoServersRegistered {
+			return nil, err
+		}
+
 		p.cfg.Logger.Printf("can't connect to servers: %s; retry after %s", err, timeout)
 
 		select {
 		case <-ctx.Done():
 			return nil, fmt.Errorf("operation cancelled")
-		case <-time.After(timeout):
+		case <-p.cfg.Clock.After(timeout):
 		}
 	}
 }
@@ -48,6 +56,10 @@ func (p *connPool) OpenConnNonBlock(ctx context.Context) (Conn, error) {
 }
 
 func (p *connPool) openConn(ctx context.Context) (Conn, time.Duration, error) {
+	if p.servers.size() == 0 {
+		return nil, 0, ErrNoServersRegistered
+	}
+
 	var (
 		hasDown        bool
 		hasRatelimited bool

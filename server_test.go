@@ -106,6 +106,8 @@ func testRatelimits(s testServer) {
 	_, err = s.s.getConnection(context.Background())
 	s.ass.Equal(errRatelimited, errors.Cause(err))
 
+	s.ass.Equal(100*time.Millisecond, s.s.retryTimeout())
+
 	// call #4, still ratelimited
 	s.clockMock.Add(time.Millisecond)
 	_, err = s.s.getConnection(context.Background())
@@ -146,6 +148,9 @@ func testTooManyConns(s testServer) {
 	s.clockMock.Add(time.Second)
 	_, err = s.s.getConnection(context.Background())
 	s.ass.Error(err)
+	s.ass.Equal(errRatelimited, errors.Cause(err))
+
+	s.ass.Equal(100*time.Millisecond, s.s.retryTimeout())
 }
 
 type closer interface {
@@ -261,7 +266,11 @@ func testServerIsDown(s testServer) {
 	_, err = s.s.getConnection(ctx) // Dial() shouldn't be called here: backoff interval wasn't passed
 	s.ass.Equal(errServerIsDown, errors.Cause(err))
 
+	s.ass.Equal(30*time.Second, s.s.retryTimeout())
+
 	s.clockMock.Add(31 * time.Second) // 1m1s elapsed, nextBackoff == 1m
+
+	s.ass.Equal(time.Duration(0), s.s.retryTimeout())
 
 	s.dialerMock.EXPECT().
 		DialContext(gomock.Any(), gomock.Any(), gomock.Any()).

@@ -11,14 +11,16 @@ import (
 type connPool struct {
 	cfg Config
 
-	servers roundRobin
+	servers             roundRobin
+	connProviderFactory func(network string, addr string, cfg Config, dialer dialer) connectionProvider
 }
 
 func newConnPool(cfg Config) *connPool {
 	cfg = cfg.withDefaults()
 
 	return &connPool{
-		cfg: cfg,
+		cfg:                 cfg,
+		connProviderFactory: newServerWrapper, // required for tests
 	}
 }
 
@@ -43,7 +45,7 @@ func (p *connPool) OpenConn(ctx context.Context) (Conn, error) {
 }
 
 func (p *connPool) RegisterServer(network string, addr string) {
-	p.servers.push(newServer(network, addr, p.cfg, &net.Dialer{
+	p.servers.push(p.connProviderFactory(network, addr, p.cfg, &net.Dialer{
 		Timeout: p.cfg.ConnectTimeout,
 	}))
 }

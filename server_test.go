@@ -9,6 +9,7 @@ import (
 
 	"github.com/benbjohnson/clock"
 	gomock "github.com/golang/mock/gomock"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
 
@@ -103,17 +104,17 @@ func testRatelimits(s testServer) {
 
 	// call #3, ratelimited
 	_, err = s.s.getConnection(context.Background())
-	s.ass.Error(err)
+	s.ass.Equal(errRatelimited, errors.Cause(err))
 
 	// call #4, still ratelimited
 	s.clockMock.Add(time.Millisecond)
 	_, err = s.s.getConnection(context.Background())
-	s.ass.Error(err)
+	s.ass.Equal(errRatelimited, errors.Cause(err))
 
 	// call #5, still ratelimited
 	s.clockMock.Add(98 * time.Millisecond)
 	_, err = s.s.getConnection(context.Background())
-	s.ass.Error(err)
+	s.ass.Equal(errRatelimited, errors.Cause(err))
 
 	// call #6, timeout came
 	s.clockMock.Add(2 * time.Millisecond)
@@ -216,7 +217,7 @@ func testBrokenConns(s testServer) {
 	s.ass.NoError(cn1.Close())
 
 	cn1 = s.getConnectionNoError() // reuse already opened connection
-	cn1.MarkUnusable()
+	cn1.MarkBroken()
 	s.ass.Error(cn1.Close()) // error equals to "xxx" here. Close() call is expected here
 
 	s.dialerMock.EXPECT().
@@ -230,6 +231,69 @@ func testBrokenConns(s testServer) {
 
 	_, err := s.getConnection()
 	s.ass.Error(err) // too many opened connections (see config)
+}
+
+func testServerIsDown(s testServer) {
+	// Initial backoff interval == 1 min here
+	// Max backoff interval == 5 mins here
+	//
+	// Backoff algorithm will generate timeouts in the following order:
+	//  * 1m0s
+	//  * 1m30s
+	//  * 2m15s
+	//  * 3m22.5s
+	//  * 5m0s
+	//  * 5m0s
+	//
+	// This order is guaranteed by zero randomization factor (see config initialization)
+
+	ctx := context.Background()
+
+	s.dialerMock.EXPECT().
+		DialContext(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil, fmt.Errorf("xxx"))
+
+	_, err := s.s.getConnection(ctx) // Dial() returned an error here
+	s.ass.Equal(errServerIsDown, errors.Cause(err))
+
+	s.clockMock.Add(30 * time.Second) // 30s elapsed, nextBackoff == 1m
+
+	_, err = s.s.getConnection(ctx) // Dial() shouldn't be called here: backoff interval wasn't passed
+	s.ass.Equal(errServerIsDown, errors.Cause(err))
+
+	s.clockMock.Add(31 * time.Second) // 1m1s elapsed, nextBackoff == 1m
+
+	s.dialerMock.EXPECT().
+		DialContext(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil, fmt.Errorf("yyy"))
+
+	// backoff interval passed: retry connection (with error)
+	// nextBackoff == 1m1s + 1m30s == 2m31s
+	_, err = s.s.getConnection(ctx)
+	s.ass.Equal(errServerIsDown, errors.Cause(err))
+
+	// Check backoff interval updated: Dial() shouldn't be called here
+	s.clockMock.Add(time.Minute) // 2m1s elapsed, nextBackoff == 2m31s
+	_, err = s.s.getConnection(ctx)
+	s.ass.Equal(errServerIsDown, errors.Cause(err))
+
+	// Next Dial() will return correct connection
+	s.dialerMock.EXPECT().
+		DialContext(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(&net.IPConn{}, nil)
+
+	s.clockMock.Add(31 * time.Second) // 2m32s elapsed, nextBackoff == 2m32s
+	_, err = s.s.getConnection(ctx)
+	s.ass.NoError(err)
+
+	// Check backoff correctly updated when server was up
+	s.clockMock.Add(time.Microsecond) // required to not hit ratelimits
+	s.dialerMock.EXPECT().
+		DialContext(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil, fmt.Errorf("zzz"))
+
+	_, err = s.s.getConnection(ctx)
+	s.ass.Equal(errServerIsDown, errors.Cause(err))
 }
 
 func TestServer(t *testing.T) {
@@ -266,5 +330,17 @@ func TestServer(t *testing.T) {
 				MaxConnsPerServer: 3,
 			}).
 			wrap(testBrokenConns),
+	)
+
+	var backoffRandomizationFactor float64
+	t.Run("server_is_down",
+		newTestServer().
+			withConfig(Config{
+				InitialBackoffInterval:     time.Minute,
+				MaxBackoffInterval:         5 * time.Minute,
+				backoffRandomizationFactor: &backoffRandomizationFactor,
+			}).
+			withoutRateLimits().
+			wrap(testServerIsDown),
 	)
 }

@@ -1,4 +1,4 @@
-// Package goconnpool implements a fault tolerant connections pool with ratelimits.
+// Package goconnpool implements connections pool with ratelimits and backoff for broken connections.
 //
 // Connection returned by the pool is protocol-independent.
 //
@@ -19,10 +19,10 @@ var (
 type Conn interface {
 	net.Conn
 
-	// MarkUnusable marks connection not usable any more:
-	// connection will not be closed when Close() method will be invoked.
-	// Otherwise connection will be returned into connections pool Close function this call.
-	MarkUnusable()
+	// MarkBroken marks connection not usable any more:
+	// connection will be closed when Close() method will be invoked.
+	// Otherwise connection will be returned into connections pool when Close function will be called.
+	MarkBroken()
 }
 
 // ConnPool is the base interface to interact with user.
@@ -36,7 +36,7 @@ type ConnPool interface {
 	// which could be used to send any type of request.
 	//
 	// Connection should be closed after usage. This action will return connection into pool.
-	// If you understand the connection should be completely closed, call conn.MarkUnusable first.
+	// If you understand the connection should be completely closed, call conn.MarkBroken first.
 	//
 	// Pool regulates number of requests per server using MaxRPS config variable.
 	// To prevent breaking this mechanism down, don't try to send multiple number of requests

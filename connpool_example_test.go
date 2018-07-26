@@ -31,10 +31,10 @@ func ExampleNewConnPool_base() {
 		if _, err := cn.Write([]byte("Hello")); err != nil {
 			// Can't write the message to the server.
 			// Force-close connection
-			cn.MarkUnusable()
+			cn.MarkBroken()
 		}
 
-		// This call moves a connection back to pool or closes the connection when MarkUnusable was called.
+		// This call moves a connection back to pool or closes the connection when MarkBroken was called.
 		cn.Close()
 	}
 }

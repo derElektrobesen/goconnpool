@@ -184,9 +184,10 @@ func (s *server) getConnection(ctx context.Context) (Conn, error) {
 	cn, err := s.makeConnection(ctx)
 	if err != nil {
 		s.down = true
-		s.nextBackoff = s.clock.Now().Add(s.bOff.NextBackOff())
+		waitFor := s.bOff.NextBackOff()
+		s.nextBackoff = s.clock.Now().Add(waitFor)
 		return nil, errors.Wrapf(errServerIsDown,
-			"can't establish connection to %s: %s", s.addr, err)
+			"can't establish connection to %s: %s; retry after %s", s.addr, err, waitFor)
 	}
 
 	s.nOpenedConns++

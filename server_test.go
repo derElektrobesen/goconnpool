@@ -273,7 +273,7 @@ func testServerIsDown(s testServer) {
 	s.clockMock.Add(30 * time.Second) // 30s elapsed, nextBackoff == 1m
 
 	_, err = s.s.getConnection(ctx) // Dial() shouldn't be called here: backoff interval wasn't passed
-	s.ass.Equal(errServerIsDown, errors.Cause(err))
+	s.ass.Equal(errRatelimit, errors.Cause(err))
 
 	s.ass.Equal(30*time.Second, s.s.retryTimeout())
 
@@ -304,7 +304,7 @@ func testServerIsDown(s testServer) {
 	// Check backoff interval updated: Dial() shouldn't be called here
 	s.clockMock.Add(time.Minute) // 2m1s elapsed, nextBackoff == 2m31s
 	_, err = s.s.getConnection(ctx)
-	s.ass.Equal(errServerIsDown, errors.Cause(err))
+	s.ass.Equal(errRatelimit, errors.Cause(err))
 
 	// Next Dial() will return correct connection
 	s.dialerMock.EXPECT().

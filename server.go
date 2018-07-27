@@ -176,7 +176,8 @@ func (s *server) getConnection(ctx context.Context) (Conn, error) {
 	if s.down {
 		waitFor := s.getDownTimeout()
 		if waitFor > 0 {
-			return nil, errors.Wrapf(errServerIsDown, "retry after %s", waitFor)
+			// prevent too frequent connects here
+			return nil, errors.Wrapf(errRatelimit, "retry after %s", waitFor)
 		}
 	}
 

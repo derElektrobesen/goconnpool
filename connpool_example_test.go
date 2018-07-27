@@ -32,11 +32,12 @@ func ExampleNewConnPool_base() {
 		if _, err := cn.Write([]byte("Hello")); err != nil {
 			// Can't write the message to the server.
 			// Force-close connection
-			cn.MarkBroken()
+			cn.Close()
+			return
 		}
 
-		// This call moves a connection back to pool or closes the connection when MarkBroken was called.
-		cn.Close()
+		// This call moves a connection back to pool
+		cn.ReturnToPool()
 	}
 }
 
@@ -130,7 +131,7 @@ func ExampleNewConnPool_dialer() {
 
 	cn, _ := p.OpenConn(context.Background())
 	origCn := cn.OriginalConn().(MyConn)
-	defer cn.Close() // XXX: Not origCn.Close() !!!
+	defer cn.ReturnToPool()
 
 	// Use origCn in some way
 	fmt.Println(origCn.Hello())

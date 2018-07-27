@@ -13,10 +13,13 @@ import (
 type Conn interface {
 	net.Conn
 
-	// MarkBroken marks connection not usable any more:
-	// connection will be closed when Close() method will be invoked.
-	// Otherwise connection will be returned into connections pool when Close function will be called.
-	MarkBroken()
+	// ReturnToPool returns connection back into pool.
+	// This method should be called to reuse already opened connection.
+	//
+	// To prevent connections leaking eigther Close() or ReturnToPool() methods shuld be called.
+	//
+	// Connection shouldn't be used after returning to pool.
+	ReturnToPool() error
 
 	// OriginalConn returns original connection returned by the dialer.
 	// Could be useful when the connection have the specific type and only this type could be used to interact with
@@ -36,8 +39,7 @@ type ConnPool interface {
 	// Otherwise function returns active connection (to some alive server in round-robin order)
 	// which could be used to send any type of request.
 	//
-	// Connection should be closed after use. This action will return connection into pool.
-	// If you understand the connection should be completely closed, call conn.MarkBroken first.
+	// Connection should be closed (with Close() call) or returned into pool (with ReturnToPool() call) after use.
 	//
 	// Pool regulates number of requests per server using MaxRPS config variable.
 	// To prevent breaking this mechanism down, don't try to send multiple number of requests

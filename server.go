@@ -198,8 +198,10 @@ func (s *server) getConnection(ctx context.Context) (Conn, error) {
 
 type serverConn struct {
 	net.Conn
-	s        *server
-	unusable bool
+	s *server
+
+	closed bool
+	inPool bool
 }
 
 func (s *server) wrapServerConn(cn net.Conn) Conn {
@@ -209,21 +211,44 @@ func (s *server) wrapServerConn(cn net.Conn) Conn {
 	}
 }
 
+func (cn *serverConn) checkCouldBeReturned() error {
+	if cn.closed {
+		return errors.New("connection already closed")
+	}
+
+	if cn.inPool {
+		return errors.New("connection already returned in pool")
+	}
+
+	return nil
+}
+
+func (cn *serverConn) ReturnToPool() error {
+	cn.s.mu.Lock()
+	defer cn.s.mu.Unlock()
+
+	if err := cn.checkCouldBeReturned(); err != nil {
+		return errors.WithStack(err)
+	}
+
+	cn.inPool = true
+	cn.s.openedConns.push(cn.Conn)
+
+	return nil
+}
+
 func (cn *serverConn) Close() error {
 	cn.s.mu.Lock()
 	defer cn.s.mu.Unlock()
 
-	if cn.unusable {
-		cn.s.nOpenedConns--
-		return errors.WithStack(cn.Conn.Close())
+	if err := cn.checkCouldBeReturned(); err != nil {
+		return errors.WithStack(err)
 	}
 
-	cn.s.openedConns.push(cn.Conn)
-	return nil
-}
+	cn.s.nOpenedConns--
+	cn.closed = true
 
-func (cn *serverConn) MarkBroken() {
-	cn.unusable = true
+	return errors.WithStack(cn.Conn.Close())
 }
 
 func (cn *serverConn) OriginalConn() net.Conn {

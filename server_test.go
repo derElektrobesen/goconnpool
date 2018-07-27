@@ -201,21 +201,21 @@ func testConnsReuse(s testServer) {
 		Times(2)
 
 	cn1 := s.getConnectionNoError()
-	s.ass.NoError(cn1.Close())
+	s.ass.NoError(cn1.ReturnToPool())
 
 	cn := s.getConnectionNoError()
-	s.ass.Equal(cn1, cn)
+	s.ass.Equal(cn1.OriginalConn(), cn.OriginalConn())
 
 	cn2 := s.getConnectionNoError()
-	s.ass.NoError(cn1.Close())
+	s.ass.NoError(cn2.ReturnToPool())
 
 	cn = s.getConnectionNoError()
-	s.ass.Equal(cn1, cn)
+	s.ass.Equal(cn1.OriginalConn(), cn.OriginalConn())
 
-	s.ass.NoError(cn2.Close())
+	s.ass.NoError(cn.ReturnToPool())
 
 	cn = s.getConnectionNoError()
-	s.ass.Equal(cn2, cn)
+	s.ass.Equal(cn2.OriginalConn(), cn.OriginalConn())
 }
 
 func testBrokenConns(s testServer) {
@@ -225,11 +225,10 @@ func testBrokenConns(s testServer) {
 		Return(cn, nil)
 
 	cn1 := s.getConnectionNoError() // this connection is really wrapped `cn` connection
-	s.ass.NoError(cn1.Close())
+	s.ass.NoError(cn1.ReturnToPool())
 
 	cn1 = s.getConnectionNoError() // reuse already opened connection
-	cn1.MarkBroken()
-	s.ass.Error(cn1.Close()) // error equals to "xxx" here. Close() call is expected here
+	s.ass.Error(cn1.Close())       // error equals to "xxx" here. Close() call is expected here
 
 	s.dialerMock.EXPECT().
 		Dial(gomock.Any(), gomock.Any()).

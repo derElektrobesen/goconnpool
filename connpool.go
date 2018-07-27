@@ -16,9 +16,9 @@ type Conn interface {
 	// ReturnToPool returns connection back into pool.
 	// This method should be called to reuse already opened connection.
 	//
-	// To prevent connections leaking eigther Close() or ReturnToPool() methods shuld be called.
+	// To prevent connections leaking eigther Close() or ReturnToPool() methods should be called.
 	//
-	// Connection shouldn't be used after returning to pool.
+	// Connection shouldn't be used after returning to pool (or after Close call).
 	ReturnToPool() error
 
 	// OriginalConn returns original connection returned by the dialer.

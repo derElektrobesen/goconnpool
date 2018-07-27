@@ -74,6 +74,7 @@ func ExampleNewConnPool_blockingCalls() {
 	pool.RegisterServer("127.0.0.1:1111")
 	pool.RegisterServer("127.0.0.1:2222")
 
+	// It is simplier to use WithTimeout() here ;)
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
 		time.Sleep(10 * time.Second)
@@ -94,33 +95,37 @@ func ExampleNewConnPool_blockingCalls() {
 
 type MyConn struct {
 	net.Conn
+
+	addr string
 }
 
-func (MyConn) Hello() string {
-	return "Hello"
+func (cn MyConn) Hello() string {
+	return fmt.Sprintf("Hello from %s", cn.addr)
 }
 
 type MyDialer struct{}
 
 func (MyDialer) Dial(ctx context.Context, addr string) (net.Conn, error) {
-	return MyConn{}, nil
+	return MyConn{addr: addr}, nil
 }
 
 // Example shows how to use custom dialer.
 //
-//  type MyDialer struct{}
+// type MyConn struct {
+//     net.Conn
 //
-//  type MyConn struct {
-//    net.Conn
-//  }
+//     addr string
+// }
 //
-//  func (MyConn) Hello() string {
-//    return "Hello"
-//  }
+// func (cn MyConn) Hello() string {
+//     return fmt.Sprintf("Hello from %s", cn.addr)
+// }
 //
-//  func (MyDialer) Dial(ctx context.Context, addr string) (net.Conn, error) {
-//    return MyConn{}, nil
-//  }
+// type MyDialer struct{}
+//
+// func (MyDialer) Dial(ctx context.Context, addr string) (net.Conn, error) {
+//     return MyConn{addr: addr}, nil
+// }
 //
 func ExampleNewConnPool_dialer() {
 	p := NewConnPool(Config{
@@ -136,5 +141,5 @@ func ExampleNewConnPool_dialer() {
 	// Use origCn in some way
 	fmt.Println(origCn.Hello())
 
-	// Output: Hello
+	// Output: Hello from google.com
 }

@@ -7,6 +7,7 @@ package goconnpool
 import (
 	"context"
 	"net"
+	"time"
 )
 
 // Conn is a wrapper around net.Conn interface
@@ -52,6 +53,9 @@ type ConnPool interface {
 	// OpenConn does same things as OpenConnNonBlock, but it blocks until new connection
 	// will be established. This process could be cancelled using the context.
 	OpenConn(ctx context.Context) (Conn, error)
+
+	// OpenConnWithTimeout does same things as OpenConn, but it stops to wait new connection after timeout.
+	OpenConnWithTimeout(ctx context.Context, timeout time.Duration) (Conn, error)
 
 	// RegisterServer registers new server in connections pool.
 	// This server stands into round-robin queue to be used during OpenConn call.

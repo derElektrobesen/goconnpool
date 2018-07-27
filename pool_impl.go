@@ -52,6 +52,12 @@ func (p *connPool) OpenConn(ctx context.Context) (Conn, error) {
 	}
 }
 
+func (p *connPool) OpenConnWithTimeout(ctx context.Context, timeout time.Duration) (Conn, error) {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	return p.OpenConn(ctx)
+}
+
 func (p *connPool) OpenConnNonBlock(ctx context.Context) (Conn, error) {
 	cn, _, err := p.openConn(ctx)
 	return cn, err

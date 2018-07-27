@@ -76,6 +76,8 @@ func newServer(addr string, cfg Config) *server {
 }
 
 func (s *server) updateLastUsage() bool {
+	// XXX: Function should be called under mutex
+
 	if s.getRatelimitTimeout() > 0 {
 		return false
 	}

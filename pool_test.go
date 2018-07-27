@@ -267,11 +267,40 @@ func testOpenConnBlock(t *testing.T) {
 	ass.Equal("operation cancelled", err.Error())
 }
 
+func testOpenConnWithTimeout(t *testing.T) {
+	t.Parallel()
+
+	ass := require.New(t)
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	cl := clock.NewMock()
+
+	p := newConnPool(Config{
+		Logger: testLogger{t: t},
+		Clock:  cl,
+	})
+
+	srv := NewMockconnectionProvider(ctrl)
+	srv.EXPECT().getConnection(gomock.Any()).Return(nil, errServerIsDown)
+	srv.EXPECT().retryTimeout().Return(time.Minute)
+
+	p.connProviderFactory = newTestConnProviderFactory(srv)
+	p.RegisterServer("yt")
+
+	_, err := p.OpenConnWithTimeout(context.Background(), 300*time.Millisecond)
+
+	ass.Error(err)
+	ass.Equal("operation cancelled", err.Error())
+}
+
 func testOpenConn(t *testing.T) {
 	t.Parallel()
 
 	t.Run("open_conn_non_block", testOpenConnNonBlock)
 	t.Run("open_conn_block", testOpenConnBlock)
+	t.Run("open_conn_with_timeout", testOpenConnWithTimeout)
 }
 
 func testOpenConnection(t *testing.T) {

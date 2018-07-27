@@ -1,0 +1,27 @@
+sudo: false
+language: go
+go:
+  - 1.9.x
+  - 1.10.x
+
+before_install:
+  - go get github.com/mattn/goveralls
+
+script:
+  - $HOME/gopath/bin/goveralls -v -race -service=travis-ci
+
+after_success:
+  - test -n "$TRAVIS_TAG" && docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+  - echo "travis go version='$TRAVIS_GO_VERSION'"
+
+# needed for the docker pipe
+services:
+  - docker
+
+deploy:
+- provider: script
+  skip_cleanup: true
+  script: curl -sL https://git.io/goreleaser | bash
+  on:
+    tags: true
+    condition: $TRAVIS_GO_VERSION =~ ^1\.10\.

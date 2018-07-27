@@ -111,21 +111,21 @@ func (MyDialer) Dial(ctx context.Context, addr string) (net.Conn, error) {
 
 // Example shows how to use custom dialer.
 //
-// type MyConn struct {
-//     net.Conn
+//    type MyConn struct {
+//        net.Conn
 //
-//     addr string
-// }
+//        addr string
+//    }
 //
-// func (cn MyConn) Hello() string {
-//     return fmt.Sprintf("Hello from %s", cn.addr)
-// }
+//    func (cn MyConn) Hello() string {
+//        return fmt.Sprintf("Hello from %s", cn.addr)
+//    }
 //
-// type MyDialer struct{}
+//    type MyDialer struct{}
 //
-// func (MyDialer) Dial(ctx context.Context, addr string) (net.Conn, error) {
-//     return MyConn{addr: addr}, nil
-// }
+//    func (MyDialer) Dial(ctx context.Context, addr string) (net.Conn, error) {
+//        return MyConn{addr: addr}, nil
+//    }
 //
 func ExampleNewConnPool_dialer() {
 	p := NewConnPool(Config{

@@ -24,7 +24,7 @@ type Config struct {
 	// MaxConnsPerServer declares maximum number of opened connections per one registered server.
 	// Default value is DefaultMaxConnsPerServer.
 	//
-	// Use math.MaxInt32 to diable this limit.
+	// Use math.MaxInt32 to disable this limit.
 	MaxConnsPerServer int
 
 	// MaxRPS declares maximum number of requests which could be sent into one server (XXX: not connection)
@@ -34,7 +34,7 @@ type Config struct {
 	//
 	// Default is DefaultMaxRPS.
 	//
-	// Use math.MaxInt32 to diable this limit.
+	// Use math.MaxInt32 to disable this limit.
 	MaxRPS int
 
 	// ConnectTimeout is the maximum amount of time a dial will wait for

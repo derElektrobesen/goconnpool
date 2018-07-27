@@ -42,7 +42,7 @@ func (p *connPool) OpenConn(ctx context.Context) (Conn, error) {
 			return nil, err
 		}
 
-		p.cfg.Logger.Printf("can't connect to servers: %s; retry after %s", err, timeout)
+		p.cfg.Logger.Infof("can't connect to servers: %s; retry after %s", err, timeout)
 
 		select {
 		case <-ctx.Done():
@@ -88,12 +88,12 @@ func (p *connPool) openConn(ctx context.Context) (Conn, time.Duration, error) {
 
 		switch errors.Cause(err) {
 		case errServerIsDown:
-			p.cfg.Logger.Printf("can't connect to server: %s", err)
+			p.cfg.Logger.Errorf("can't connect to server: %s", err)
 			hasDown = true
 		case errRatelimit:
 			hasRatelimited = true
 		default:
-			p.cfg.Logger.Printf("can't connect to server: %s", err)
+			p.cfg.Logger.Errorf("can't connect to server: %s", err)
 			globErr = err
 		}
 

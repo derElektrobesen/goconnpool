@@ -57,7 +57,8 @@ func testConfigFillDefaults(t *testing.T) {
 		}, s.cfg)
 
 	// just to increment code coverage: nothing to test
-	s.cfg.Logger.Printf(">>>")
+	s.cfg.Logger.Errorf(">>>")
+	s.cfg.Logger.Infof(">>>")
 	s.cfg.Clock.Now()
 	s.cfg.Clock.Since(time.Now())
 	s.cfg.Clock.After(0)
@@ -92,9 +93,13 @@ type testLogger struct {
 	t *testing.T
 }
 
-func (l testLogger) Printf(format string, args ...interface{}) {
+func (l testLogger) Errorf(format string, args ...interface{}) {
 	l.t.Helper()
 	l.t.Logf(format, args...)
+}
+
+func (l testLogger) Infof(format string, args ...interface{}) {
+	l.Errorf(format, args...)
 }
 
 func testOpenConnNonBlock(t *testing.T) {

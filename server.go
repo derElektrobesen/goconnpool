@@ -143,12 +143,12 @@ func (s *server) makeConnection(ctx context.Context) (net.Conn, error) {
 
 	select {
 	case <-ctx.Done():
-		// Check connection were really done
+		// Some corner-case when dial completes 'just in time' as ctx.Done()
 		select {
 		case <-ready:
 			return cn, err
 		default:
-			return nil, errors.New("timeout")
+			return nil, errors.WithStack(fmt.Errorf("can't dial to %s: timeout", s.addr))
 		}
 	case <-ready:
 		return cn, err

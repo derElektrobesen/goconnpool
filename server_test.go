@@ -3,6 +3,7 @@ package goconnpool
 import (
 	context "context"
 	"fmt"
+	"math"
 	net "net"
 	"testing"
 	"time"
@@ -46,8 +47,8 @@ func (s testServer) withoutTimeouts() testServer {
 }
 
 func (s testServer) withoutRateLimits() testServer {
-	s.cfg.MaxRPS = 99999999
-	s.cfg.MaxConnsPerServer = 9999999
+	s.cfg.MaxRPS = math.MaxInt32
+	s.cfg.MaxConnsPerServer = math.MaxInt32
 	return s
 }
 
@@ -188,16 +189,19 @@ func (s testServer) newClosableTestConn(err error, needClose bool) net.Conn {
 	}
 }
 
-func (s testServer) newClosableTestConnFactory(err error) func(context.Context, string) (net.Conn, error) {
+func (s testServer) newClosableTestConnFactory(
+	err error,
+	needClose bool,
+) func(context.Context, string) (net.Conn, error) {
 	return func(context.Context, string) (net.Conn, error) {
-		return s.newClosableTestConn(nil, false), err
+		return s.newClosableTestConn(nil, needClose), err
 	}
 }
 
 func testConnsReuse(s testServer) {
 	s.dialerMock.EXPECT().
 		Dial(gomock.Any(), gomock.Any()).
-		DoAndReturn(s.newClosableTestConnFactory(nil)).
+		DoAndReturn(s.newClosableTestConnFactory(nil, false)).
 		Times(2)
 
 	cn1 := s.getConnectionNoError()
@@ -324,6 +328,30 @@ func testServerIsDown(s testServer) {
 	s.ass.Equal(errServerIsDown, errors.Cause(err))
 }
 
+func testConnectionDoubleClose(s testServer) {
+	gomock.InOrder(
+		//cn1
+		s.dialerMock.EXPECT().
+			Dial(gomock.Any(), gomock.Any()).
+			DoAndReturn(s.newClosableTestConnFactory(nil, true)),
+
+		//cn2
+		s.dialerMock.EXPECT().
+			Dial(gomock.Any(), gomock.Any()).
+			DoAndReturn(s.newClosableTestConnFactory(nil, false)),
+	)
+
+	cn1 := s.getConnectionNoError()
+	s.ass.NoError(cn1.Close())
+	s.ass.Error(cn1.ReturnToPool())
+	s.ass.Error(cn1.Close())
+
+	cn2 := s.getConnectionNoError()
+	s.ass.NoError(cn2.ReturnToPool())
+	s.ass.Error(cn2.Close())
+	s.ass.Error(cn2.ReturnToPool())
+}
+
 func TestServer(t *testing.T) {
 	t.Parallel()
 
@@ -340,7 +368,7 @@ func TestServer(t *testing.T) {
 	t.Run("too_many_conns",
 		newTestServer().
 			withConfig(Config{
-				MaxRPS:            99999999,
+				MaxRPS:            math.MaxInt32,
 				MaxConnsPerServer: 3,
 			}).
 			withoutTimeouts().
@@ -357,7 +385,7 @@ func TestServer(t *testing.T) {
 	t.Run("broken_connection",
 		newTestServer().
 			withConfig(Config{
-				MaxRPS:            99999999,
+				MaxRPS:            math.MaxInt32,
 				MaxConnsPerServer: 3,
 			}).
 			withoutTimeouts().
@@ -375,5 +403,12 @@ func TestServer(t *testing.T) {
 			withoutRateLimits().
 			withoutTimeouts().
 			wrap(testServerIsDown),
+	)
+
+	t.Run("connection_double_close",
+		newTestServer().
+			withoutRateLimits().
+			withoutTimeouts().
+			wrap(testConnectionDoubleClose),
 	)
 }

@@ -69,7 +69,7 @@ func testConfigFillDefaults(t *testing.T) {
 }
 
 func testDefaultConnPoolCreation(t *testing.T) {
-	// this test is also exisists just to increment code coverage: nothing to test here %)
+	// this test also exists to increase code coverage: nothing to test here %)
 	t.Parallel()
 
 	s := NewConnPool(Config{})

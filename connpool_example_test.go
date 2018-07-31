@@ -1,12 +1,10 @@
 package goconnpool
 
 import (
-	"bufio"
 	"context"
 	"flag"
 	"fmt"
 	net "net"
-	"net/http"
 	"time"
 )
 

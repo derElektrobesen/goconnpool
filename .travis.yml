@@ -4,24 +4,15 @@ go:
   - 1.9.x
   - 1.10.x
 
-env:
-  global:
-    - CC_TEST_REPORTER_ID=15d0cd6e83e4bc8096a2840965bf731fb1ec97b0dc5486e5edae4770068b389c
-
 before_install:
   - go get github.com/mattn/goveralls
-  - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
-  - chmod +x ./cc-test-reporter
-  - ./cc-test-reporter before-build
 
 script:
   - $HOME/gopath/bin/goveralls -v -race -service=travis-ci
-  - bundle exec rspec
 
 after_success:
   - test -n "$TRAVIS_TAG" && docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
   - echo "travis go version='$TRAVIS_GO_VERSION'"
-  - ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT
 
 # needed for the docker pipe
 services:

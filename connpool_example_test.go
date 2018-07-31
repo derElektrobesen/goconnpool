@@ -41,28 +41,6 @@ func ExampleNewConnPool_base() {
 	}
 }
 
-func ExampleNewConnPool_httpRequest() {
-	cfg := NewConfig(&flag.FlagSet{})
-	flag.Parse() // XXX: This call is required to fill config variables
-
-	// Create a pool
-	pool := NewConnPool(*cfg)
-
-	// Register some servers
-	pool.RegisterServer("127.0.0.1:1234")
-
-	cn, _ := pool.OpenConn(context.Background()) // success connection
-	defer cn.Close()
-
-	// You could implement your own transport in the same way:
-	// https://golang.org/pkg/net/http/#RoundTripper
-	req, _ := http.NewRequest(http.MethodGet, "/some", nil)
-	req.Write(cn)
-	resp, _ := http.ReadResponse(bufio.NewReader(cn), req)
-
-	fmt.Println(resp.ContentLength)
-}
-
 func ExampleNewConnPool_blockingCalls() {
 	cfg := NewConfig(&flag.FlagSet{})
 	flag.Parse() // XXX: This call is required to fill config variables

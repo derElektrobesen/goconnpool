@@ -2,6 +2,8 @@
 //
 // Connection returned by the pool is protocol-independent.
 //
+// A subpackage implements HTTP connections pool: https://godoc.org/github.com/derElektrobesen/goconnpool/httpconnpool
+//
 package goconnpool
 
 import (

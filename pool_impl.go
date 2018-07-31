@@ -23,7 +23,7 @@ type connPool struct {
 }
 
 func newConnPool(cfg Config) *connPool {
-	cfg = cfg.withDefaults()
+	cfg = cfg.WithDefaults()
 
 	return &connPool{
 		cfg:                 cfg,

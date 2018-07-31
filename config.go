@@ -107,7 +107,8 @@ func NewConfig(p FlagsParser) *Config {
 	return &c
 }
 
-func (c Config) withDefaults() Config {
+// WithDefaults returns a copy of the original config with empty fields setuped with theirs defaults
+func (c Config) WithDefaults() Config {
 	if c.MaxConnsPerServer == 0 {
 		c.MaxConnsPerServer = DefaultMaxConnsPerServer
 	}

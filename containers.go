@@ -46,6 +46,16 @@ func (rr *roundRobin) next() interface{} {
 	return x
 }
 
+func (rr *roundRobin) pop() interface{} {
+	if len(rr.data) == 0 {
+		return nil
+	}
+
+	x := rr.data[0]
+	rr.data = rr.data[1:]
+	return x
+}
+
 func (rr *roundRobin) size() int {
 	return len(rr.data)
 }

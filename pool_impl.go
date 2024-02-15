@@ -117,3 +117,40 @@ func (p *connPool) openConn(ctx context.Context) (Conn, time.Duration, error) {
 func (p *connPool) RegisterServer(addr string) {
 	p.servers.push(p.connProviderFactory(addr, p.cfg))
 }
+
+func (p *connPool) Size() int {
+	return p.servers.size()
+}
+
+func (p *connPool) Close() error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if p.servers.size() == 0 {
+		return ErrNoServersRegistered
+	}
+
+	for i := 0; i < p.servers.size(); i++ {
+		s := p.servers.next().(connectionProvider)
+
+		err := s.closeConnections()
+		if err != nil {
+			return errors.Wrap(err, "failed to drain server")
+		}
+	}
+
+	for {
+		x := p.servers.pop()
+		if x == nil {
+			break
+		}
+
+		if x.(connectionProvider).nOpenedConnections() == 0 {
+			continue
+		}
+
+		time.Sleep(time.Second)
+	}
+
+	return nil
+}

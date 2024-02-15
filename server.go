@@ -14,6 +14,8 @@ import (
 type connectionProvider interface {
 	getConnection(ctx context.Context) (Conn, error)
 	retryTimeout() time.Duration
+	closeConnections() error
+	nOpenedConnections() int
 }
 
 type server struct {
@@ -198,6 +200,38 @@ func (s *server) getConnection(ctx context.Context) (Conn, error) {
 	}
 
 	return s.wrapServerConn(cn), nil
+}
+
+func (s *server) closeConnections() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.openedConns.size() > 0 {
+		for {
+			y := s.openedConns.pop()
+			if y == nil {
+				break
+			}
+
+			x := s.wrapServerConn(y.(net.Conn))
+
+			if x.OriginalConn() == nil {
+				break
+			}
+
+			if closeErr := x.OriginalConn().Close(); closeErr != nil {
+				return errors.Wrap(closeErr, "failed to close connection")
+			}
+
+			s.nOpenedConns--
+		}
+	}
+
+	return nil
+}
+
+func (s *server) nOpenedConnections() int {
+	return s.nOpenedConns
 }
 
 type serverConn struct {

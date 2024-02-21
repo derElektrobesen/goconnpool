@@ -148,8 +148,6 @@ func (p *connPool) Close() error {
 		if x.(connectionProvider).nOpenedConnections() == 0 {
 			continue
 		}
-
-		time.Sleep(time.Second)
 	}
 
 	return nil

@@ -9,11 +9,16 @@ import (
 	"github.com/pkg/errors"
 )
 
+var (
+	ErrNoServersRegistered = fmt.Errorf("no registered servers found")
+)
+
 type connPool struct {
 	cfg Config
 
 	mu sync.Mutex
 
+	closed              bool
 	servers             roundRobin
 	connProviderFactory func(addr string, cfg Config) connectionProvider
 }
@@ -63,7 +68,7 @@ func (p *connPool) openConn(ctx context.Context) (Conn, time.Duration, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	if p.servers.size() == 0 {
+	if p.servers.size() == 0 || p.closed {
 		return nil, 0, ErrNoServersRegistered
 	}
 
@@ -114,13 +119,11 @@ func (p *connPool) RegisterServer(addr string) {
 	p.servers.push(p.connProviderFactory(addr, p.cfg))
 }
 
-func (p *connPool) Size() int {
-	return p.servers.size()
-}
-
 func (p *connPool) Close() error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+
+	p.closed = true
 
 	if p.servers.size() == 0 {
 		return nil
@@ -132,13 +135,6 @@ func (p *connPool) Close() error {
 		err := s.closeConnections()
 		if err != nil {
 			return errors.Wrap(err, "failed to drain server")
-		}
-	}
-
-	for {
-		x := p.servers.pop()
-		if x == nil {
-			break
 		}
 	}
 

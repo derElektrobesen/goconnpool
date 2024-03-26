@@ -63,9 +63,6 @@ type ConnPool interface {
 	// Don't try to call it in runtime: not thread safe.
 	RegisterServer(addr string)
 
-	// Size get current pool size
-	Size() int
-
 	// Close drain all opened connections and deregister servers
 	Close() error
 }

@@ -14,6 +14,7 @@ import (
 type connectionProvider interface {
 	getConnection(ctx context.Context) (Conn, error)
 	retryTimeout() time.Duration
+	closeConnections() error
 }
 
 type server struct {
@@ -34,6 +35,7 @@ type server struct {
 	bOff        backoff.BackOff
 	nextBackoff time.Time
 	down        bool
+	closed      bool
 
 	clock Clock
 }
@@ -200,6 +202,23 @@ func (s *server) getConnection(ctx context.Context) (Conn, error) {
 	return s.wrapServerConn(cn), nil
 }
 
+func (s *server) closeConnections() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.closed = true
+
+	for y := s.openedConns.pop(); y != nil; y = s.openedConns.pop() {
+		if closeErr := y.(net.Conn).Close(); closeErr != nil {
+			return errors.Wrap(closeErr, "failed to close connection")
+		}
+
+		s.nOpenedConns--
+	}
+
+	return nil
+}
+
 type serverConn struct {
 	net.Conn
 	s *server
@@ -233,6 +252,10 @@ func (cn *serverConn) ReturnToPool() error {
 
 	if err := cn.checkCouldBeReturned(); err != nil {
 		return errors.WithStack(err)
+	}
+
+	if cn.s.closed {
+		return cn.Close()
 	}
 
 	cn.inPool = true

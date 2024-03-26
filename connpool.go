@@ -1,7 +1,6 @@
 // Package goconnpool implements connections pool with ratelimits and backoff for broken connections.
 //
 // Connection returned by the pool is protocol-independent.
-//
 package goconnpool
 
 import (
@@ -63,6 +62,9 @@ type ConnPool interface {
 	// This operation is a part of initialization.
 	// Don't try to call it in runtime: not thread safe.
 	RegisterServer(addr string)
+
+	// Close drain all opened connections and deregister servers
+	Close() error
 }
 
 // NewConnPool creates new pool with configuration passed.

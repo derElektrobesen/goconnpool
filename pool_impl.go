@@ -9,10 +9,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-var (
-	ErrNoServersRegistered = fmt.Errorf("no registered servers found")
-)
-
 type connPool struct {
 	cfg Config
 
@@ -127,7 +123,7 @@ func (p *connPool) Close() error {
 	defer p.mu.Unlock()
 
 	if p.servers.size() == 0 {
-		return ErrNoServersRegistered
+		return nil
 	}
 
 	for i := 0; i < p.servers.size(); i++ {
@@ -143,10 +139,6 @@ func (p *connPool) Close() error {
 		x := p.servers.pop()
 		if x == nil {
 			break
-		}
-
-		if x.(connectionProvider).nOpenedConnections() == 0 {
-			continue
 		}
 	}
 
